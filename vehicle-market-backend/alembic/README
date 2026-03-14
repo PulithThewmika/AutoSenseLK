@@ -1,0 +1,3 @@
+# Alembic migrations directory
+# Run: alembic init alembic
+# Then configure alembic.ini and env.py to use app.core.database

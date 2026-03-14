@@ -1,0 +1,33 @@
+# ── Core ─────────────────────────────────────────────
+fastapi==0.115.*
+uvicorn[standard]==0.34.*
+pydantic==2.*
+pydantic-settings==2.*
+
+# ── Database ─────────────────────────────────────────
+sqlalchemy[asyncio]==2.*
+asyncpg==0.30.*
+alembic==1.14.*
+
+# ── Background Tasks ────────────────────────────────
+celery==5.*
+redis==5.*
+
+# ── Scraping ─────────────────────────────────────────
+scrapy==2.*
+playwright==1.*
+beautifulsoup4==4.*
+lxml==5.*
+
+# ── ML ───────────────────────────────────────────────
+scikit-learn==1.*
+pandas==2.*
+numpy==2.*
+
+# ── Security ─────────────────────────────────────────
+python-jose[cryptography]==3.*
+passlib[bcrypt]==1.*
+
+# ── Logging / Utils ─────────────────────────────────
+python-dotenv==1.*
+httpx==0.28.*
