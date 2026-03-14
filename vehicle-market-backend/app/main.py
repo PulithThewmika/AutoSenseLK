@@ -2,12 +2,22 @@
 FastAPI application factory and router mounting.
 """
 
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.core.config import settings
 from app.core.logging import setup_logging
+from app.core.database import init_db
 from app.api.v1 import listings, analytics, deals, makes, search
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Startup / shutdown lifecycle — initialise MongoDB on boot."""
+    await init_db()
+    yield
 
 
 def create_app() -> FastAPI:
@@ -18,6 +28,7 @@ def create_app() -> FastAPI:
         title=settings.APP_NAME,
         version=settings.APP_VERSION,
         description="Vehicle Market Intelligence API — scrape, analyse, and score Sri Lankan vehicle listings.",
+        lifespan=lifespan,
     )
 
     # ── CORS ─────────────────────────────────────────────

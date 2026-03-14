@@ -13,8 +13,9 @@ class Settings(BaseSettings):
     APP_VERSION: str = "0.1.0"
     DEBUG: bool = False
 
-    # ── Database ─────────────────────────────────────────
-    DATABASE_URL: str = "postgresql+asyncpg://user:pass@localhost:5432/vehicle_market"
+    # ── MongoDB ──────────────────────────────────────────
+    MONGODB_URL: str = "mongodb://localhost:27017"
+    MONGODB_DB_NAME: str = "vehicle_market"
 
     # ── Redis / Celery ───────────────────────────────────
     REDIS_URL: str = "redis://localhost:6379/0"

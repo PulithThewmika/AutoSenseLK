@@ -205,3 +205,35 @@ cython_debug/
 marimo/_static/
 marimo/_lsp/
 __marimo__/
+
+# ─── Node.js / Frontend ─────────────────────────────
+node_modules/
+dist/
+dist-ssr/
+*.local
+.turbo/
+.next/
+.nuxt/
+.output/
+
+# ─── Vite ────────────────────────────────────────────
+*.sw?
+
+# ─── TypeScript ──────────────────────────────────────
+*.tsbuildinfo
+
+# ─── ML model artifacts ─────────────────────────────
+models_store/*.pkl
+*.h5
+*.joblib
+
+# ─── OS files ────────────────────────────────────────
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# ─── IDE ─────────────────────────────────────────────
+.idea/
+.vscode/
+*.swp
+*.swo

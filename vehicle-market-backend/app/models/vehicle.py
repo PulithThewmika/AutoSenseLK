@@ -1,31 +1,28 @@
 """
-Vehicle Make / Model / Year ORM models.
+Vehicle Make / Model document models (Beanie / MongoDB).
 """
 
-from sqlalchemy import Column, Integer, String, ForeignKey
-from sqlalchemy.orm import relationship
+from typing import Optional
 
-from app.core.database import Base
+from beanie import Document
 
 
-class Make(Base):
+class Make(Document):
     """Vehicle manufacturer (e.g. Toyota, Honda)."""
 
-    __tablename__ = "makes"
+    name: str
 
-    id = Column(Integer, primary_key=True, index=True)
-    name = Column(String(100), unique=True, nullable=False)
+    class Settings:
+        name = "makes"
+        indexes = ["name"]
 
-    models = relationship("Model", back_populates="make")
 
-
-class Model(Base):
+class Model(Document):
     """Vehicle model belonging to a make (e.g. Corolla, Civic)."""
 
-    __tablename__ = "models"
+    name: str
+    make_id: str  # Reference to Make document ID
 
-    id = Column(Integer, primary_key=True, index=True)
-    name = Column(String(100), nullable=False)
-    make_id = Column(Integer, ForeignKey("makes.id"), nullable=False)
-
-    make = relationship("Make", back_populates="models")
+    class Settings:
+        name = "models"
+        indexes = ["name", "make_id"]

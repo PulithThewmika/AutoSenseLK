@@ -4,10 +4,9 @@ uvicorn[standard]==0.34.*
 pydantic==2.*
 pydantic-settings==2.*
 
-# ── Database ─────────────────────────────────────────
-sqlalchemy[asyncio]==2.*
-asyncpg==0.30.*
-alembic==1.14.*
+# ── Database (MongoDB) ──────────────────────────────
+motor==3.*
+beanie==1.*
 
 # ── Background Tasks ────────────────────────────────
 celery==5.*

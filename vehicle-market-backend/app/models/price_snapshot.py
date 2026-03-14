@@ -1,19 +1,20 @@
 """
-Historical price snapshot ORM model.
+Historical price snapshot document model (Beanie / MongoDB).
 """
 
-from sqlalchemy import Column, Integer, Float, DateTime, ForeignKey
-from sqlalchemy.sql import func
+from datetime import datetime, timezone
 
-from app.core.database import Base
+from beanie import Document
+from pydantic import Field
 
 
-class PriceSnapshot(Base):
+class PriceSnapshot(Document):
     """Daily snapshot of a listing's price for trend analysis."""
 
-    __tablename__ = "price_snapshots"
+    listing_id: str  # Reference to Listing document ID
+    price: float
+    captured_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
-    id = Column(Integer, primary_key=True, index=True)
-    listing_id = Column(Integer, ForeignKey("listings.id"), nullable=False)
-    price = Column(Float, nullable=False)
-    captured_at = Column(DateTime(timezone=True), server_default=func.now())
+    class Settings:
+        name = "price_snapshots"
+        indexes = ["listing_id", "captured_at"]

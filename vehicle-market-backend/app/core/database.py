@@ -1,21 +1,25 @@
 """
-SQLAlchemy engine and session factory.
+MongoDB connection via Motor (async driver) + Beanie ODM.
 """
 
-from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sessionmaker
-from sqlalchemy.orm import DeclarativeBase
+from motor.motor_asyncio import AsyncIOMotorClient
+from beanie import init_beanie
 
 from app.core.config import settings
 
-engine = create_async_engine(settings.DATABASE_URL, echo=settings.DEBUG)
 
-SessionLocal = async_sessionmaker(
-    bind=engine,
-    class_=AsyncSession,
-    expire_on_commit=False,
-)
+async def init_db() -> None:
+    """Initialize the MongoDB connection and Beanie ODM."""
+    client = AsyncIOMotorClient(settings.MONGODB_URL)
+    db = client[settings.MONGODB_DB_NAME]
 
+    # Import all document models here
+    from app.models.listing import Listing
+    from app.models.vehicle import Make, Model
+    from app.models.price_snapshot import PriceSnapshot
+    from app.models.deal_score import DealScore
 
-class Base(DeclarativeBase):
-    """Declarative base for all ORM models."""
-    pass
+    await init_beanie(
+        database=db,
+        document_models=[Listing, Make, Model, PriceSnapshot, DealScore],
+    )

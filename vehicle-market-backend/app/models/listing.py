@@ -1,29 +1,31 @@
 """
-Listing ORM model.
+Listing document model (Beanie / MongoDB).
 """
 
-from sqlalchemy import Column, Integer, String, Float, Text, DateTime, ForeignKey
-from sqlalchemy.sql import func
+from datetime import datetime, timezone
+from typing import Optional
 
-from app.core.database import Base
+from beanie import Document
+from pydantic import Field
 
 
-class Listing(Base):
+class Listing(Document):
     """A single vehicle listing scraped from the marketplace."""
 
-    __tablename__ = "listings"
+    title: str
+    description: Optional[str] = None
+    price: float
+    currency: str = "LKR"
+    mileage: Optional[float] = None
+    year: Optional[int] = None
+    location: Optional[str] = None
+    source_url: str
+    source_hash: str
+    make_id: Optional[str] = None
+    model_id: Optional[str] = None
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    updated_at: Optional[datetime] = None
 
-    id = Column(Integer, primary_key=True, index=True)
-    title = Column(String(255), nullable=False)
-    description = Column(Text, nullable=True)
-    price = Column(Float, nullable=False)
-    currency = Column(String(10), default="LKR")
-    mileage = Column(Float, nullable=True)
-    year = Column(Integer, nullable=True)
-    location = Column(String(255), nullable=True)
-    source_url = Column(String(512), unique=True, nullable=False)
-    source_hash = Column(String(64), unique=True, nullable=False)
-    make_id = Column(Integer, ForeignKey("makes.id"), nullable=True)
-    model_id = Column(Integer, ForeignKey("models.id"), nullable=True)
-    created_at = Column(DateTime(timezone=True), server_default=func.now())
-    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+    class Settings:
+        name = "listings"
+        indexes = ["source_url", "source_hash", "make_id", "model_id"]

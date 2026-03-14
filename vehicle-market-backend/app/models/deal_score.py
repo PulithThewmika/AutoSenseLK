@@ -1,22 +1,23 @@
 """
-Deal score ORM model — stores ML-generated score per listing.
+Deal score document model (Beanie / MongoDB) — stores ML-generated score per listing.
 """
 
-from sqlalchemy import Column, Integer, Float, String, DateTime, ForeignKey
-from sqlalchemy.sql import func
+from datetime import datetime, timezone
 
-from app.core.database import Base
+from beanie import Document
+from pydantic import Field
 
 
-class DealScore(Base):
+class DealScore(Document):
     """ML-predicted deal quality for a listing."""
 
-    __tablename__ = "deal_scores"
+    listing_id: str  # Reference to Listing document ID
+    predicted_price: float
+    actual_price: float
+    score: float
+    label: str  # good_deal / fair / overpriced
+    scored_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
-    id = Column(Integer, primary_key=True, index=True)
-    listing_id = Column(Integer, ForeignKey("listings.id"), unique=True, nullable=False)
-    predicted_price = Column(Float, nullable=False)
-    actual_price = Column(Float, nullable=False)
-    score = Column(Float, nullable=False)
-    label = Column(String(20), nullable=False)  # good_deal / fair / overpriced
-    scored_at = Column(DateTime(timezone=True), server_default=func.now())
+    class Settings:
+        name = "deal_scores"
+        indexes = ["listing_id"]
