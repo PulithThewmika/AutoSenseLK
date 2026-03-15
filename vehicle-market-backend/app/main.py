@@ -11,6 +11,7 @@ from app.core.config import settings
 from app.core.logging import setup_logging
 from app.core.database import init_db
 from app.api.v1 import listings, analytics, deals, makes, search
+from app.api.v1 import scrape
 
 
 @asynccontextmanager
@@ -47,6 +48,7 @@ def create_app() -> FastAPI:
     app.include_router(deals.router, prefix=api_prefix)
     app.include_router(makes.router, prefix=api_prefix)
     app.include_router(search.router, prefix=api_prefix)
+    app.include_router(scrape.router, prefix=api_prefix)
 
     @app.get("/health", tags=["health"])
     async def health_check():
