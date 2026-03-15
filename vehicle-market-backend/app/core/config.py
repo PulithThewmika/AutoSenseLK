@@ -26,6 +26,17 @@ class Settings(BaseSettings):
     JWT_ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60
 
+    # ── Scraper ──────────────────────────────────────────
+    SCRAPE_BASE_URL: str = "https://ikman.lk"
+    SCRAPE_MAX_PAGES: int = 5
+    SCRAPE_DELAY: float = 1.5
+    SCRAPE_USER_AGENT: str = (
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+        "AppleWebKit/537.36 (KHTML, like Gecko) "
+        "Chrome/131.0.0.0 Safari/537.36"
+    )
+    SCRAPE_DETAIL_PAGES: bool = True  # fetch individual ad pages for richer data
+
     class Config:
         env_file = ".env"
         env_file_encoding = "utf-8"
