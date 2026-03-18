@@ -3,13 +3,95 @@ Deal-score endpoints.
 - GET /deals/score?listing_id=  — deal quality for a listing
 """
 
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, HTTPException, Query
+from beanie import PydanticObjectId
+
+from app.models.listing import Listing
+from app.models.deal_score import DealScore
+from app.ml.scorer import score_listing
 
 router = APIRouter(prefix="/deals", tags=["deals"])
 
 
 @router.get("/score")
-async def deal_score(listing_id: int = Query(...)):
+async def deal_score(listing_id: str = Query(...)):
     """Return the deal score (good / fair / overpriced) for a listing."""
-    # TODO: look up ML-generated score
-    return {"listing_id": listing_id, "score": None, "label": "unknown"}
+    # 1. Fetch the listing
+    try:
+        listing = await Listing.get(PydanticObjectId(listing_id))
+    except Exception:
+        raise HTTPException(status_code=404, detail="Listing not found")
+
+    if not listing:
+        raise HTTPException(status_code=404, detail="Listing not found")
+
+    # 2. Check for existing score
+    existing = await DealScore.find_one(DealScore.listing_id == listing_id)
+    if existing:
+        return {
+            "listing_id": listing_id,
+            "predicted_price": existing.predicted_price,
+            "actual_price": existing.actual_price,
+            "score": existing.score,
+            "label": existing.label,
+        }
+
+    # 3. Compute predicted price as avg of similar listings (same make/model)
+    predicted_price = await _compute_avg_price(listing.make_id, listing.model_id)
+
+    if predicted_price == 0.0:
+        return {
+            "listing_id": listing_id,
+            "predicted_price": 0.0,
+            "actual_price": listing.price,
+            "score": 0.0,
+            "label": "unknown",
+        }
+
+    # 4. Score the deal
+    result = score_listing(predicted_price, listing.price)
+
+    # 5. Persist the score
+    deal = DealScore(
+        listing_id=listing_id,
+        predicted_price=predicted_price,
+        actual_price=listing.price,
+        score=result["score"],
+        label=result["label"],
+    )
+    await deal.insert()
+
+    return {
+        "listing_id": listing_id,
+        "predicted_price": round(predicted_price, 2),
+        "actual_price": listing.price,
+        "score": result["score"],
+        "label": result["label"],
+    }
+
+
+async def _compute_avg_price(
+    make_id: str | None,
+    model_id: str | None,
+) -> float:
+    """Compute the average price from similar listings as a price proxy."""
+    match_stage: dict = {"price": {"$gt": 0}}
+
+    if make_id:
+        match_stage["make_id"] = make_id
+    if model_id:
+        match_stage["model_id"] = model_id
+
+    # If we don't have both make and model, fall back to just make
+    if not make_id and not model_id:
+        return 0.0
+
+    pipeline = [
+        {"$match": match_stage},
+        {"$group": {"_id": None, "avg_price": {"$avg": "$price"}}},
+    ]
+
+    cursor = Listing.aggregate(pipeline)
+    result = await cursor.to_list()
+
+    return result[0]["avg_price"] if result else 0.0
