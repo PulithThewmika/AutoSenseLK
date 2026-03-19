@@ -22,8 +22,8 @@ async def search_listings(
         "$or": [
             {"title": {"$regex": q, "$options": "i"}},
             {"description": {"$regex": q, "$options": "i"}},
-            {"make_id": {"$regex": q, "$options": "i"}},
-            {"model_id": {"$regex": q, "$options": "i"}},
+            {"make": {"$regex": q, "$options": "i"}},
+            {"model": {"$regex": q, "$options": "i"}},
             {"category": {"$regex": q, "$options": "i"}},
             {"location": {"$regex": q, "$options": "i"}},
         ]
@@ -54,8 +54,8 @@ async def search_listings(
                 "mileage": l.mileage,
                 "year": l.year,
                 "location": l.location,
-                "make_id": l.make_id,
-                "model_id": l.model_id,
+                "make": l.make,
+                "model": l.model,
                 "category": l.category,
                 "source_url": l.source_url,
                 "created_at": l.created_at.isoformat() if l.created_at else None,
