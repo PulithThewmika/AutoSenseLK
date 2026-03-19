@@ -2,7 +2,7 @@
 Listing document model (Beanie / MongoDB).
 """
 
-from datetime import datetime, timezone
+from datetime import datetime, timezone, date
 from typing import Optional
 
 from beanie import Document
@@ -30,6 +30,9 @@ class Listing(Document):
     condition: Optional[str] = None   # used | brand_new | reconditioned
     category: Optional[str] = None   # Cars, Vans, etc.
 
+    # When the ad was posted on ikman.lk
+    posted_date: Optional[date] = None
+
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     updated_at: Optional[datetime] = None
 
@@ -42,6 +45,8 @@ class Listing(Document):
             "model",
             "condition",
             "year",
+            "posted_date",
             [("make", 1), ("model", 1), ("year", 1), ("condition", 1)],  # primary analytics index
             [("make", 1), ("condition", 1)],
+            [("posted_date", -1), ("make", 1)],  # day-by-day analysis
         ]
