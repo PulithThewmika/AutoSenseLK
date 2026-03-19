@@ -47,15 +47,10 @@ async def save_listings(listings: list[dict]) -> int:
                     location=data.get("location"),
                     source_url=data.get("source_url", ""),
                     source_hash=data.get("source_hash", ""),
-                    make_id=data.get("make"),
-                    model_id=data.get("model"),
-                    category=data.get("category"),
-                    transmission=data.get("transmission"),
-                    fuel_type=data.get("fuel_type"),
-                    engine_capacity=data.get("engine_capacity"),
+                    make=data.get("make"),
+                    model=data.get("model"),
                     condition=data.get("condition"),
-                    seller_name=data.get("seller_name"),
-                    image_urls=data.get("image_urls", []),
+                    category=data.get("category"),
                 )
                 await listing.insert()
                 saved += 1

@@ -17,15 +17,18 @@ class ListingBase(BaseModel):
 
 class ListingCreate(ListingBase):
     source_url: HttpUrl
-    make_id: int | None = None
-    model_id: int | None = None
+    make: str | None = None
+    model: str | None = None
+    condition: str | None = None
 
 
 class ListingResponse(ListingBase):
-    id: int
+    id: str
     source_url: str
-    make_id: int | None = None
-    model_id: int | None = None
+    make: str | None = None
+    model: str | None = None
+    condition: str | None = None
+    category: str | None = None
     created_at: datetime | None = None
 
     class Config:
