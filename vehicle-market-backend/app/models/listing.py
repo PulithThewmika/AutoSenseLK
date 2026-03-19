@@ -29,7 +29,7 @@ class Listing(Document):
     transmission: Optional[str] = None     # Manual, Automatic
     fuel_type: Optional[str] = None        # Petrol, Diesel, Hybrid, Electric
     engine_capacity: Optional[str] = None  # e.g. "1500 cc"
-    condition: Optional[str] = None        # New, Used
+    condition: Optional[str] = None        # used, brand_new, reconditioned
     seller_name: Optional[str] = None
     image_urls: list[str] = Field(default_factory=list)
 
@@ -38,4 +38,11 @@ class Listing(Document):
 
     class Settings:
         name = "listings"
-        indexes = ["source_url", "source_hash", "make_id", "model_id"]
+        indexes = [
+            "source_url",
+            "source_hash",
+            "make_id",
+            "model_id",
+            "condition",
+            [("make_id", 1), ("condition", 1)],  # compound for brand×condition queries
+        ]
