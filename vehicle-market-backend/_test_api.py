@@ -2,7 +2,7 @@
 import httpx
 import json
 
-BASE = "http://localhost:8001"
+BASE = "http://localhost:8000"
 
 endpoints = [
     ("Health", "/health"),
