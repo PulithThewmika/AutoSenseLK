@@ -3,6 +3,7 @@ Data cleaner — normalise currency, mileage units, and other raw fields.
 """
 
 import re
+from datetime import date
 from typing import Optional
 
 from app.core.logging import logger
@@ -19,7 +20,6 @@ def clean_price(raw_price: str) -> Optional[float]:
     """
     if not raw_price:
         return None
-    # Remove everything except digits and decimal points
     cleaned = re.sub(r"[^\d.]", "", raw_price)
     try:
         return float(cleaned)
@@ -67,6 +67,17 @@ def clean_year(raw: str) -> Optional[int]:
     return None
 
 
+def clean_posted_date(raw: str) -> Optional[date]:
+    """Parse a posted date ISO string into a date object."""
+    if not raw:
+        return None
+    try:
+        return date.fromisoformat(raw)
+    except (ValueError, TypeError):
+        logger.debug("Could not parse posted_date: %r", raw)
+        return None
+
+
 def clean_listing(raw: dict) -> dict:
     """
     Apply all cleaning steps to a raw listing dict.
@@ -94,6 +105,11 @@ def clean_listing(raw: dict) -> dict:
     year = clean_year(year_raw)
     cleaned["year"] = year
     cleaned.pop("year_raw", None)
+
+    # ── Posted date ─────────────────────────────────────
+    posted = clean_posted_date(raw.get("posted_date_raw", ""))
+    cleaned["posted_date"] = posted
+    cleaned.pop("posted_date_raw", None)
 
     # ── Currency ────────────────────────────────────────
     cleaned.setdefault("currency", "LKR")
