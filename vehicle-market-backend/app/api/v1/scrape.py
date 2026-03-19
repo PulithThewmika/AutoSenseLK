@@ -5,7 +5,8 @@ Scrape API — manual trigger and status for the scraper.
 from fastapi import APIRouter, BackgroundTasks
 
 from app.core.logging import logger
-from app.scraper.runner import run_scrape_cycle
+from app.scraper.runner import run_scrape_cycle, run_brand_scrape
+from app.scraper.brands import BRANDS, CONDITIONS
 
 router = APIRouter(prefix="/scrape", tags=["scrape"])
 
@@ -13,27 +14,60 @@ router = APIRouter(prefix="/scrape", tags=["scrape"])
 _last_result: dict | None = None
 
 
-async def _run_and_store():
+async def _run_and_store(brands=None, conditions=None):
     """Run the scrape cycle and store the result."""
     global _last_result
     try:
-        _last_result = await run_scrape_cycle()
+        _last_result = await run_scrape_cycle(brands=brands, conditions=conditions)
     except Exception as exc:
         logger.error("Background scrape failed: %s", exc)
         _last_result = {"status": "failed", "error": str(exc)}
 
 
+async def _run_brand_and_store(brand: str):
+    """Run a single-brand scrape and store the result."""
+    global _last_result
+    try:
+        _last_result = await run_brand_scrape(brand)
+    except Exception as exc:
+        logger.error("Brand scrape failed for %s: %s", brand, exc)
+        _last_result = {"status": "failed", "brand": brand, "error": str(exc)}
+
+
 @router.post("/trigger")
 async def trigger_scrape(background_tasks: BackgroundTasks):
     """
-    Kick off a scrape cycle in the background.
+    Kick off a full market scrape (all brands × all conditions).
 
     Returns immediately with an acknowledgement.
     """
     global _last_result
-    _last_result = {"status": "running"}
+    _last_result = {"status": "running", "type": "full_market"}
     background_tasks.add_task(_run_and_store)
-    return {"message": "Scrape cycle started", "status": "running"}
+    return {
+        "message": "Full market scrape started (all brands × all conditions)",
+        "status": "running",
+        "brands_count": len(BRANDS),
+        "conditions": CONDITIONS,
+    }
+
+
+@router.post("/trigger/brand/{brand}")
+async def trigger_brand_scrape(brand: str, background_tasks: BackgroundTasks):
+    """
+    Scrape a single brand across all conditions.
+
+    Returns immediately with an acknowledgement.
+    """
+    global _last_result
+    _last_result = {"status": "running", "type": "brand", "brand": brand}
+    background_tasks.add_task(_run_brand_and_store, brand)
+    return {
+        "message": f"Brand scrape started for '{brand}'",
+        "status": "running",
+        "brand": brand,
+        "conditions": CONDITIONS,
+    }
 
 
 @router.get("/status")
@@ -42,3 +76,13 @@ async def scrape_status():
     if _last_result is None:
         return {"status": "no_runs_yet"}
     return _last_result
+
+
+@router.get("/brands")
+async def list_available_brands():
+    """Return the list of all supported brands and conditions."""
+    return {
+        "brands": BRANDS,
+        "total_brands": len(BRANDS),
+        "conditions": CONDITIONS,
+    }
