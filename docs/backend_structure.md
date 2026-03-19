@@ -21,7 +21,7 @@ vehicle-market-backend/
 │   │       ├── deals.py        ← GET /deals/score
 │   │       ├── makes.py        ← GET /makes, GET /makes/{id}/models
 │   │       ├── search.py       ← GET /search
-│   │       └── scrape.py       ← POST /scrape/trigger, GET /scrape/status
+│   │       └── scrape.py       ← POST /scrape/trigger, POST /scrape/trigger/brand/{brand}, GET /scrape/status
 │   ├── core/
 │   │   ├── config.py           ← Settings via pydantic-settings (.env)
 │   │   ├── database.py         ← MongoDB + Beanie initialisation
@@ -31,12 +31,14 @@ vehicle-market-backend/
 │   │   ├── listing.py          ← Listing document
 │   │   ├── vehicle.py          ← Make & Model documents
 │   │   ├── deal_score.py       ← DealScore document
-│   │   └── price_snapshot.py   ← PriceSnapshot document
+│   │   ├── price_snapshot.py   ← PriceSnapshot document
+│   │   └── daily_analytics.py  ← DailyAnalytics document
 │   ├── schemas/
 │   │   ├── listing.py          ← ListingBase, ListingCreate, ListingResponse
 │   │   ├── analytics.py        ← AvgPriceResponse, PriceTrendResponse
 │   │   └── deal.py             ← DealScoreResponse
 │   ├── scraper/
+│   │   ├── brands.py           ← Registry of 55+ brands & config
 │   │   ├── ikman_spider.py     ← Main spider — crawl + parse + clean
 │   │   ├── parser.py           ← HTML parsing (cards + detail pages)
 │   │   ├── cleaner.py          ← Data normalisation (price, mileage, year)
@@ -53,7 +55,8 @@ vehicle-market-backend/
 │   ├── analytics/
 │   │   ├── market_summary.py   ← Aggregate market statistics
 │   │   ├── price_trends.py     ← Monthly average price computation
-│   │   └── depreciation.py     ← Price vs age/mileage curves
+│   │   ├── depreciation.py     ← Price vs age/mileage curves
+│   │   └── daily_snapshot.py   ← Engine for market/brand daily snapshots
 │   └── tasks/
 │       ├── celery_app.py       ← Celery instance (Redis broker)
 │       ├── scrape_task.py      ← Background scrape task
@@ -88,8 +91,8 @@ vehicle-market-backend/
 
 #### `database.py`
 - Creates an async `AsyncIOMotorClient` connection to MongoDB
-- Initialises Beanie ODM with all 5 document models:
-  `Listing`, `Make`, `Model`, `PriceSnapshot`, `DealScore`
+- Initialises Beanie ODM with all 6 document models:
+  `Listing`, `Make`, `Model`, `PriceSnapshot`, `DealScore`, `DailyAnalytics`
 
 #### `security.py`
 - `create_access_token()` — Generate signed JWT tokens
@@ -132,6 +135,11 @@ All models extend Beanie's `Document` class and map to MongoDB collections.
 - **Indexes**: `listing_id`, `captured_at`
 - **Fields**: listing_id, price, captured_at
 
+#### `DailyAnalytics`
+- **Collection**: `daily_analytics`
+- **Indexes**: `snapshot_date`, `scope`, `brand`, `condition` (compound)
+- **Fields**: snapshot_date, scope, brand, condition, total_listings, avg_price, min_price, max_price, median_price, price_change_pct, created_at
+
 ---
 
 ### `app/scraper/` — Web Scraping Pipeline
@@ -140,20 +148,25 @@ The scraper follows a 5-step pipeline orchestrated by `runner.py`:
 
 ```
 1. Crawl (ikman_spider.py)
-   ↓ fetch HTML pages
+   ↓ 55 brands × 3 conditions
 2. Parse (parser.py)
    ↓ extract structured data
 3. Clean (cleaner.py)
    ↓ normalise values
 4. Deduplicate (deduplicator.py)
    ↓ filter existing records
-5. Store (storage.py)
-   ↓ persist to MongoDB
+5. Store & Analyze (storage.py, daily_snapshot.py)
+   ↓ persist to MongoDB & compute daily analytics
 ```
 
+#### `brands.py`
+- Registry of 55+ vehicle brands in Sri Lanka
+- Defines condition mappings (`used`, `brand_new`, `reconditioned`)
+- Generates specific URLs for combinations (e.g. Toyota Used)
+
 #### `ikman_spider.py`
-- Crawls `https://ikman.lk/en/ads/sri-lanka/vehicles?page={n}`
-- Iterates through configurable number of pages (`SCRAPE_MAX_PAGES`)
+- Follows brand-specific URLs (brand + condition filters)
+- Iterates through configurable number of pages per brand (`SCRAPE_MAX_PAGES_PER_BRAND`)
 - Optionally fetches individual detail pages for richer data
 - Applies cleaning to all listings before returning
 
@@ -228,6 +241,12 @@ The scraper follows a 5-step pipeline orchestrated by `runner.py`:
 - `depreciation_curve(make, model)` — Price vs year data points
 - `mileage_curve(make, model)` — Price vs mileage data points
 
+#### `daily_snapshot.py`
+- `compute_and_save_daily_analytics()` — Aggregates the listing collection into a daily snapshot
+- Computes overall market-wide analytics, per-brand, and per-brand×condition stats
+- Stores min, max, average, and median pricing along with % changes
+
+
 ---
 
 ### `app/tasks/` — Celery Background Tasks
@@ -279,6 +298,9 @@ celery -A app.tasks.celery_app worker --loglevel=info
 │  ┌───────────┐ ┌──────┐ ┌────────┐ ┌───────────┐ ┌────────┐│
 │  │ listings  │ │makes │ │models  │ │deal_scores│ │snapshots││
 │  └───────────┘ └──────┘ └────────┘ └───────────┘ └────────┘│
+│  ┌─────────────────┐                                       │
+│  │ daily_analytics │                                       │
+│  └─────────────────┘                                       │
 └────────────────────────┬─────────────────────────────────────┘
                          │
                          ▼
