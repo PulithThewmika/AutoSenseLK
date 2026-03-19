@@ -3,6 +3,7 @@ HTML parser — extract structured fields from raw ikman.lk listing HTML.
 """
 
 import re
+from datetime import date, datetime, timedelta
 from typing import Optional
 
 from bs4 import BeautifulSoup, Tag
@@ -59,7 +60,6 @@ def _parse_card(card: Tag) -> Optional[dict]:
     # Location and category — usually after mileage, format: "Location, Category"
     location = ""
     category = ""
-    # Look for known Sri Lankan district names
     _districts = [
         "Colombo", "Gampaha", "Kalutara", "Kandy", "Matale", "Nuwara Eliya",
         "Galle", "Matara", "Hambantota", "Jaffna", "Kilinochchi", "Mannar",
@@ -72,7 +72,6 @@ def _parse_card(card: Tag) -> Optional[dict]:
             location = district
             break
 
-    # Category — look for known vehicle categories
     _categories = [
         "Cars", "Motorbikes", "Vans", "Three Wheelers", "Lorries",
         "Buses", "Bicycles", "Auto Parts & Accessories", "Rentals",
@@ -82,6 +81,9 @@ def _parse_card(card: Tag) -> Optional[dict]:
         if cat in card_text:
             category = cat
             break
+
+    # Posted date — ikman shows relative dates like "Today", "Yesterday", "3 days ago", etc.
+    posted_date_raw = _extract_posted_date(card_text)
 
     if not title:
         return None
@@ -93,7 +95,70 @@ def _parse_card(card: Tag) -> Optional[dict]:
         "location": location,
         "category": category,
         "source_url": source_url,
+        "posted_date_raw": posted_date_raw or "",
     }
+
+
+# ---------------------------------------------------------------------------
+# Posted date extraction
+# ---------------------------------------------------------------------------
+
+def _extract_posted_date(text: str) -> Optional[str]:
+    """
+    Extract posted date from card text.
+
+    ikman.lk shows relative dates:
+      - "Today"           → today's date
+      - "Yesterday"       → yesterday's date
+      - "X days ago"      → date X days ago
+      - "X weeks ago"     → date X * 7 days ago
+      - "X months ago"    → date X * 30 days ago
+      - "Jan 15"          → absolute date (current year assumed)
+      - "2025 Jan 15"     → absolute date
+
+    Returns ISO date string (YYYY-MM-DD) or None.
+    """
+    today = date.today()
+
+    lower = text.lower()
+
+    if "today" in lower:
+        return today.isoformat()
+
+    if "yesterday" in lower:
+        return (today - timedelta(days=1)).isoformat()
+
+    # "X days ago"
+    days_match = re.search(r"(\d+)\s*days?\s*ago", lower)
+    if days_match:
+        return (today - timedelta(days=int(days_match.group(1)))).isoformat()
+
+    # "X weeks ago"
+    weeks_match = re.search(r"(\d+)\s*weeks?\s*ago", lower)
+    if weeks_match:
+        return (today - timedelta(weeks=int(weeks_match.group(1)))).isoformat()
+
+    # "X months ago"
+    months_match = re.search(r"(\d+)\s*months?\s*ago", lower)
+    if months_match:
+        return (today - timedelta(days=int(months_match.group(1)) * 30)).isoformat()
+
+    # Absolute date: "Jan 15" or "2025 Jan 15"
+    _months = {
+        "jan": 1, "feb": 2, "mar": 3, "apr": 4, "may": 5, "jun": 6,
+        "jul": 7, "aug": 8, "sep": 9, "oct": 10, "nov": 11, "dec": 12,
+    }
+    abs_match = re.search(r"(\d{4})?\s*(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)\s+(\d{1,2})", lower)
+    if abs_match:
+        yr = int(abs_match.group(1)) if abs_match.group(1) else today.year
+        mo = _months[abs_match.group(2)]
+        dy = int(abs_match.group(3))
+        try:
+            return date(yr, mo, dy).isoformat()
+        except ValueError:
+            pass
+
+    return None
 
 
 # ---------------------------------------------------------------------------
@@ -126,8 +191,7 @@ def parse_listing_detail(html: str) -> dict:
         if desc_div:
             data["description"] = desc_div.get_text(strip=True)
 
-    # Vehicle attributes — usually in a structured list/table
-    # Look for attribute labels and their values
+    # Vehicle attributes
     _attr_map = {
         "Brand": "make",
         "Model": "model",
@@ -139,19 +203,15 @@ def parse_listing_detail(html: str) -> dict:
         "Mileage": "mileage_raw",
     }
 
-    # Try multiple selector strategies for attribute extraction
-    # Strategy 1: Look for label-value pairs in spans/divs
     all_text_elements = soup.find_all(["span", "div", "td", "dt", "dd", "li"])
     for label_text, field_name in _attr_map.items():
         for el in all_text_elements:
             el_text = el.get_text(strip=True)
             if el_text == label_text:
-                # Get the next sibling or parent's next child with the value
                 value_el = el.find_next_sibling()
                 if value_el:
                     data[field_name] = value_el.get_text(strip=True)
                     break
-                # Try parent's next sibling
                 parent = el.parent
                 if parent:
                     next_sib = parent.find_next_sibling()
@@ -159,34 +219,16 @@ def parse_listing_detail(html: str) -> dict:
                         data[field_name] = next_sib.get_text(strip=True)
                         break
 
-    # Strategy 2: Look for meta-like attribute elements
-    meta_links = soup.select("a[class*='ad-meta']")
-    if meta_links:
-        for link in meta_links:
-            text = link.get_text(strip=True)
-            href = link.get("href", "")
-            if "brand" in str(href).lower() or "make" in str(href).lower():
-                data.setdefault("make", text)
-            elif "model" in str(href).lower():
-                data.setdefault("model", text)
-
     # Location
     location_el = soup.select_one("span[class*='location']")
     if location_el:
         data["location"] = location_el.get_text(strip=True)
 
-    # Image URLs
-    images = []
-    for img in soup.select("img[src*='ikman']"):
-        src = img.get("src", "")
-        if src and "ad-image" in src or "listing" in src:
-            images.append(src)
-    # Also check for lazy-loaded images
-    for img in soup.select("img[data-src]"):
-        src = img.get("data-src", "")
-        if src:
-            images.append(src)
-    data["image_urls"] = list(set(images))
+    # Posted date from detail page
+    full_text = soup.get_text(" ", strip=True)
+    posted = _extract_posted_date(full_text)
+    if posted:
+        data["posted_date_raw"] = posted
 
     return data
 

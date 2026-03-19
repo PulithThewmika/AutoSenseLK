@@ -51,6 +51,7 @@ async def save_listings(listings: list[dict]) -> int:
                     model=data.get("model"),
                     condition=data.get("condition"),
                     category=data.get("category"),
+                    posted_date=data.get("posted_date"),
                 )
                 await listing.insert()
                 saved += 1
