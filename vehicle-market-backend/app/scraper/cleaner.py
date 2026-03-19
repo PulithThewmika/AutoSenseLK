@@ -100,8 +100,7 @@ def clean_listing(raw: dict) -> dict:
 
     # ── Trim whitespace from string fields ──────────────
     for key in ("title", "description", "location", "category",
-                "make", "model", "condition", "transmission",
-                "fuel_type", "engine_capacity", "seller_name"):
+                "make", "model", "condition"):
         val = cleaned.get(key)
         if isinstance(val, str):
             cleaned[key] = val.strip()

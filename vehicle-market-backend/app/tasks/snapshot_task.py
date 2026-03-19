@@ -1,5 +1,8 @@
 """
-Celery task — daily price snapshot archiver.
+Celery task — daily analytics snapshot.
+
+Calls the daily_snapshot engine to compute and persist
+PriceSnapshot aggregates and DailyAnalytics documents.
 """
 
 import asyncio
@@ -10,25 +13,15 @@ from app.core.logging import logger
 
 @celery_app.task(name="snapshot_prices")
 def snapshot_prices_task() -> str:
-    """Capture current prices of all active listings as daily snapshots."""
-    return asyncio.run(_take_snapshots())
+    """Compute daily market analytics and price snapshots."""
+    return asyncio.run(_run_daily_analytics())
 
 
-async def _take_snapshots() -> str:
-    """Async snapshot logic — iterate listings and create PriceSnapshot docs."""
-    from app.models.listing import Listing
-    from app.models.price_snapshot import PriceSnapshot
+async def _run_daily_analytics() -> str:
+    """Async: compute and save all daily analytics."""
+    from app.analytics.daily_snapshot import compute_and_save_daily_analytics
 
-    listings = await Listing.find(Listing.price > 0).to_list()
-    count = 0
+    result = await compute_and_save_daily_analytics()
 
-    for listing in listings:
-        snapshot = PriceSnapshot(
-            listing_id=str(listing.id),
-            price=listing.price,
-        )
-        await snapshot.insert()
-        count += 1
-
-    logger.info("Captured %d price snapshots", count)
-    return f"Price snapshots captured: {count}"
+    logger.info("Daily analytics task complete: %s", result)
+    return f"Daily analytics: {result['analytics_docs_saved']} analytics, {result['price_snapshots_saved']} snapshots"
