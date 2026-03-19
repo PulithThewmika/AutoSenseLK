@@ -27,12 +27,8 @@ async def market_summary() -> dict:
     avg_price = result[0]["avg_price"] if result else 0.0
 
     # Distinct makes and models
-    makes = await Listing.distinct("make_id")
-    models = await Listing.distinct("model_id")
-
-    # Filter out None/empty values
-    makes = [m for m in makes if m]
-    models = [m for m in models if m]
+    makes = [m for m in await Listing.distinct("make") if m]
+    models = [m for m in await Listing.distinct("model") if m]
 
     return {
         "total_listings": total,
@@ -49,9 +45,9 @@ async def avg_price_by_make_model(
     """Return average price filtered by optional make/model."""
     match_stage: dict = {"price": {"$gt": 0}}
     if make:
-        match_stage["make_id"] = {"$regex": make, "$options": "i"}
+        match_stage["make"] = {"$regex": make, "$options": "i"}
     if model:
-        match_stage["model_id"] = {"$regex": model, "$options": "i"}
+        match_stage["model"] = {"$regex": model, "$options": "i"}
 
     pipeline = [
         {"$match": match_stage},
