@@ -18,8 +18,9 @@ async def init_db() -> None:
     from app.models.vehicle import Make, Model
     from app.models.price_snapshot import PriceSnapshot
     from app.models.deal_score import DealScore
+    from app.models.daily_analytics import DailyAnalytics
 
     await init_beanie(
         database=db,
-        document_models=[Listing, Make, Model, PriceSnapshot, DealScore],
+        document_models=[Listing, Make, Model, PriceSnapshot, DealScore, DailyAnalytics],
     )

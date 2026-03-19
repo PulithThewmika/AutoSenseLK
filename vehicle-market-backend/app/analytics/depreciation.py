@@ -15,9 +15,9 @@ async def depreciation_curve(
         "year": {"$ne": None},
     }
     if make:
-        match_stage["make_id"] = {"$regex": make, "$options": "i"}
+        match_stage["make"] = {"$regex": make, "$options": "i"}
     if model:
-        match_stage["model_id"] = {"$regex": model, "$options": "i"}
+        match_stage["model"] = {"$regex": model, "$options": "i"}
 
     pipeline = [
         {"$match": match_stage},
@@ -54,9 +54,9 @@ async def mileage_curve(
         "mileage": {"$ne": None, "$gt": 0},
     }
     if make:
-        match_stage["make_id"] = {"$regex": make, "$options": "i"}
+        match_stage["make"] = {"$regex": make, "$options": "i"}
     if model:
-        match_stage["model_id"] = {"$regex": model, "$options": "i"}
+        match_stage["model"] = {"$regex": model, "$options": "i"}
 
     # Bucket by 25,000 km bands
     pipeline = [

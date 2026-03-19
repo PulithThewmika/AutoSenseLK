@@ -1,116 +1,200 @@
 """
-Ikman.lk spider — crawls vehicle listing pages and extracts ad data.
+Ikman.lk spider — crawls vehicle listing pages per brand+model and extracts ad data.
+
+Strategy:
+  - For brands WITH model data: crawl brand → model → condition (most precise)
+  - For brands WITHOUT model data: crawl brand → condition (broad sweep)
 """
+
+from __future__ import annotations
 
 import asyncio
 from typing import Optional
 
 from app.core.config import settings
 from app.core.logging import logger
+from app.scraper.brands import (
+    BRAND_MODELS, CONDITIONS, CONDITION_URL_MAP,
+    build_model_url, build_brand_url, brand_display_name,
+)
 from app.scraper.playwright_fetch import fetch_page
-from app.scraper.parser import parse_listing_cards, parse_listing_detail
+from app.scraper.parser import parse_listing_cards
 from app.scraper.cleaner import clean_listing
 
 
-# Vehicle listing index URL template
-LISTING_URL = "{base}/en/ads/sri-lanka/vehicles?page={page}"
-
-
-async def crawl_listings(
-    max_pages: Optional[int] = None,
-    fetch_details: Optional[bool] = None,
+async def crawl_model(
+    brand: str,
+    model_display: str,
+    model_slug: str,
+    condition: str | None = None,
+    max_pages: int | None = None,
 ) -> list[dict]:
     """
-    Crawl ikman.lk vehicle listing pages and return cleaned listing dicts.
+    Crawl listings for a specific brand + model + condition combination.
 
-    1. Iterate through listing index pages (with pagination)
-    2. Parse listing cards from each page
-    3. Optionally fetch detail pages for richer data
-    4. Clean all listings
-
-    Args:
-        max_pages: Override ``settings.SCRAPE_MAX_PAGES``
-        fetch_details: Override ``settings.SCRAPE_DETAIL_PAGES``
-
-    Returns:
-        List of cleaned listing dicts ready for deduplication & storage.
+    Returns cleaned listing dicts with make, model, and condition injected.
     """
     if max_pages is None:
-        max_pages = settings.SCRAPE_MAX_PAGES
-    if fetch_details is None:
-        fetch_details = settings.SCRAPE_DETAIL_PAGES
+        max_pages = settings.SCRAPE_MAX_PAGES_PER_BRAND
+
+    make_display = brand_display_name(brand)
+    cond_label = condition or "all"
 
     all_listings: list[dict] = []
 
-    # ── Step 1: Crawl listing index pages ────────────────
     for page_num in range(1, max_pages + 1):
-        url = LISTING_URL.format(base=settings.SCRAPE_BASE_URL, page=page_num)
-        logger.info("Crawling page %d/%d: %s", page_num, max_pages, url)
+        url = build_model_url(brand, model_slug, condition=condition, page=page_num)
 
         html = await fetch_page(url)
         if not html:
-            logger.warning("Failed to fetch page %d, stopping pagination", page_num)
+            logger.warning("    ✗ %s/%s [%s] page %d — failed", make_display, model_display, cond_label, page_num)
             break
 
         cards = parse_listing_cards(html)
         if not cards:
-            logger.info("No more listings found on page %d, stopping", page_num)
+            logger.info("    ✓ %s/%s [%s] page %d — no more listings", make_display, model_display, cond_label, page_num)
             break
 
-        all_listings.extend(cards)
-        logger.info(
-            "Page %d: found %d listings (total so far: %d)",
-            page_num, len(cards), len(all_listings),
-        )
+        # Inject brand, model, condition from URL context
+        for card in cards:
+            card["make"] = make_display
+            card["model"] = model_display
+            if condition:
+                card["condition"] = condition
 
-        # Polite delay between pages
+        all_listings.extend(cards)
         await asyncio.sleep(settings.SCRAPE_DELAY)
 
-    logger.info("Total listings from index pages: %d", len(all_listings))
-
-    # ── Step 2: Optionally fetch detail pages ────────────
-    if fetch_details and all_listings:
-        logger.info("Fetching detail pages for %d listings …", len(all_listings))
-        all_listings = await _enrich_with_details(all_listings)
-
-    # ── Step 3: Clean all listings ───────────────────────
-    cleaned = [clean_listing(listing) for listing in all_listings]
-    logger.info("Cleaned %d listings", len(cleaned))
-
+    cleaned = [clean_listing(l) for l in all_listings]
+    if cleaned:
+        logger.info(
+            "    ✓ %s / %s [%s]: %d listings",
+            make_display, model_display, cond_label, len(cleaned),
+        )
     return cleaned
 
 
-async def _enrich_with_details(listings: list[dict]) -> list[dict]:
+async def crawl_brand_no_models(
+    brand: str,
+    condition: str | None = None,
+    max_pages: int | None = None,
+) -> list[dict]:
     """
-    Fetch each listing's detail page and merge additional fields
-    (make, model, transmission, fuel type, etc.) into the listing dict.
+    Crawl a brand without model-level data (brand-level URL).
+
+    Used for brands where model registry is not yet available.
     """
-    enriched: list[dict] = []
+    if max_pages is None:
+        max_pages = settings.SCRAPE_MAX_PAGES_PER_BRAND
 
-    for i, listing in enumerate(listings):
-        detail_url = listing.get("source_url", "")
-        if not detail_url:
-            enriched.append(listing)
-            continue
+    make_display = brand_display_name(brand)
+    cond_label = condition or "all"
+    all_listings: list[dict] = []
 
-        logger.info(
-            "Fetching detail %d/%d: %s",
-            i + 1, len(listings), detail_url,
-        )
+    for page_num in range(1, max_pages + 1):
+        url = build_brand_url(brand, condition=condition, page=page_num)
 
-        html = await fetch_page(detail_url)
-        if html:
-            detail_data = parse_listing_detail(html)
-            # Merge detail data into listing (detail takes precedence for
-            # fields it provides, but don't overwrite existing non-empty values
-            # with empty ones from the detail page)
-            for key, value in detail_data.items():
-                if value and (not listing.get(key)):
-                    listing[key] = value
+        html = await fetch_page(url)
+        if not html:
+            break
 
-        enriched.append(listing)
+        cards = parse_listing_cards(html)
+        if not cards:
+            break
 
-        # Polite delay between detail page requests
+        for card in cards:
+            card["make"] = make_display
+            if condition:
+                card["condition"] = condition
+
+        all_listings.extend(cards)
         await asyncio.sleep(settings.SCRAPE_DELAY)
 
-    return enriched
+    cleaned = [clean_listing(l) for l in all_listings]
+    if cleaned:
+        logger.info("  ✓ %s [%s] (no-model): %d listings", make_display, cond_label, len(cleaned))
+    return cleaned
+
+
+async def crawl_all_brands(
+    brands: list[str] | None = None,
+    conditions: list[str] | None = None,
+    max_pages: int | None = None,
+) -> list[dict]:
+    """
+    Full market sweep — all brands × all conditions.
+
+    For brands with model data: crawls per model × condition.
+    For brands without model data: crawls per condition only.
+
+    Returns all cleaned listings.
+    """
+    if conditions is None:
+        conditions = CONDITIONS
+
+    # Determine which brands to crawl
+    target_model_brands = list(BRAND_MODELS.keys())
+    if brands:
+        target_model_brands = [b for b in target_model_brands if b in brands]
+
+    from app.scraper.brands import _BRAND_ONLY, BRANDS
+    target_brand_only = _BRAND_ONLY
+    if brands:
+        target_brand_only = [b for b in _BRAND_ONLY if b in brands]
+
+    all_listings: list[dict] = []
+
+    # ── 1. Brands with model data ─────────────────────────────────────────
+    for brand in target_model_brands:
+        models = BRAND_MODELS[brand]
+        make_display = brand_display_name(brand)
+        logger.info("═══ %s (%d models) ═══", make_display, len(models))
+
+        for model_display, model_slug in models:
+            for condition in conditions:
+                listings = await crawl_model(
+                    brand, model_display, model_slug,
+                    condition=condition, max_pages=max_pages,
+                )
+                all_listings.extend(listings)
+
+    # ── 2. Brand-only brands ──────────────────────────────────────────────
+    for brand in target_brand_only:
+        make_display = brand_display_name(brand)
+        logger.info("═══ %s (brand-level) ═══", make_display)
+
+        for condition in conditions:
+            listings = await crawl_brand_no_models(brand, condition=condition, max_pages=max_pages)
+            all_listings.extend(listings)
+
+    logger.info("═══ Full sweep complete: %d total listings ═══", len(all_listings))
+    return all_listings
+
+
+async def crawl_brand(
+    brand: str,
+    condition: str | None = None,
+    max_pages: int | None = None,
+    fetch_details: bool | None = None,  # kept for compat, unused
+) -> list[dict]:
+    """
+    Crawl a single brand across all its models (or brand-level if no models).
+
+    Convenience wrapper used by run_brand_scrape().
+    """
+    if brand in BRAND_MODELS:
+        all_listings: list[dict] = []
+        for model_display, model_slug in BRAND_MODELS[brand]:
+            listings = await crawl_model(brand, model_display, model_slug, condition=condition, max_pages=max_pages)
+            all_listings.extend(listings)
+        return all_listings
+    else:
+        return await crawl_brand_no_models(brand, condition=condition, max_pages=max_pages)
+
+
+# Backward-compat alias
+async def crawl_listings(
+    max_pages: Optional[int] = None,
+    fetch_details: Optional[bool] = None,
+) -> list[dict]:
+    return await crawl_all_brands(max_pages=max_pages)

@@ -28,7 +28,8 @@ class Settings(BaseSettings):
 
     # ── Scraper ──────────────────────────────────────────
     SCRAPE_BASE_URL: str = "https://ikman.lk"
-    SCRAPE_MAX_PAGES: int = 5
+    SCRAPE_MAX_PAGES: int = 5                # legacy — full generic crawl
+    SCRAPE_MAX_PAGES_PER_BRAND: int = 3      # pages per brand×condition combo
     SCRAPE_DELAY: float = 1.5
     SCRAPE_USER_AGENT: str = (
         "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "

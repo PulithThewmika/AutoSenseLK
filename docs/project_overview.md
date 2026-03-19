@@ -110,10 +110,9 @@ All configuration is loaded from `vehicle-market-backend/.env`:
 | `JWT_ALGORITHM` | `HS256` | JWT signing algorithm |
 | `ACCESS_TOKEN_EXPIRE_MINUTES` | `60` | Token expiry duration |
 | `SCRAPE_BASE_URL` | `https://ikman.lk` | Base URL for scraping |
-| `SCRAPE_MAX_PAGES` | `5` | Max listing pages to crawl per cycle |
+| `SCRAPE_MAX_PAGES_PER_BRAND` | `3` | Max pages to crawl per brand×model×condition combo |
 | `SCRAPE_DELAY` | `1.5` | Seconds between requests (polite delay) |
 | `SCRAPE_USER_AGENT` | Chrome UA string | HTTP User-Agent header |
-| `SCRAPE_DETAIL_PAGES` | `True` | Fetch individual ad detail pages |
 
 ---
 

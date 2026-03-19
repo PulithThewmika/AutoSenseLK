@@ -37,7 +37,7 @@ async def deal_score(listing_id: str = Query(...)):
         }
 
     # 3. Compute predicted price as avg of similar listings (same make/model)
-    predicted_price = await _compute_avg_price(listing.make_id, listing.model_id)
+    predicted_price = await _compute_avg_price(listing.make, listing.model)
 
     if predicted_price == 0.0:
         return {
@@ -71,19 +71,19 @@ async def deal_score(listing_id: str = Query(...)):
 
 
 async def _compute_avg_price(
-    make_id: str | None,
-    model_id: str | None,
+    make: str | None,
+    model: str | None,
 ) -> float:
     """Compute the average price from similar listings as a price proxy."""
     match_stage: dict = {"price": {"$gt": 0}}
 
-    if make_id:
-        match_stage["make_id"] = make_id
-    if model_id:
-        match_stage["model_id"] = model_id
+    if make:
+        match_stage["make"] = make
+    if model:
+        match_stage["model"] = model
 
     # If we don't have both make and model, fall back to just make
-    if not make_id and not model_id:
+    if not make and not model:
         return 0.0
 
     pipeline = [

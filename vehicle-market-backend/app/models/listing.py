@@ -21,21 +21,27 @@ class Listing(Document):
     location: Optional[str] = None
     source_url: str
     source_hash: str
-    make_id: Optional[str] = None
-    model_id: Optional[str] = None
 
-    # Additional fields from detail pages
-    category: Optional[str] = None        # Cars, Motorbikes, Vans, etc.
-    transmission: Optional[str] = None     # Manual, Automatic
-    fuel_type: Optional[str] = None        # Petrol, Diesel, Hybrid, Electric
-    engine_capacity: Optional[str] = None  # e.g. "1500 cc"
-    condition: Optional[str] = None        # New, Used
-    seller_name: Optional[str] = None
-    image_urls: list[str] = Field(default_factory=list)
+    # Brand / model (plain strings — populated from scrape context)
+    make: Optional[str] = None    # e.g. "Toyota"
+    model: Optional[str] = None   # e.g. "Aqua"
+
+    # Scrape context
+    condition: Optional[str] = None   # used | brand_new | reconditioned
+    category: Optional[str] = None   # Cars, Vans, etc.
 
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     updated_at: Optional[datetime] = None
 
     class Settings:
         name = "listings"
-        indexes = ["source_url", "source_hash", "make_id", "model_id"]
+        indexes = [
+            "source_url",
+            "source_hash",
+            "make",
+            "model",
+            "condition",
+            "year",
+            [("make", 1), ("model", 1), ("year", 1), ("condition", 1)],  # primary analytics index
+            [("make", 1), ("condition", 1)],
+        ]

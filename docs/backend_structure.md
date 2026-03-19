@@ -12,38 +12,41 @@
 ```
 vehicle-market-backend/
 ├── app/
-│   ├── main.py                 ← App factory, CORS, router mounting
+│   ├── main.py                 ← App factory, CORS, router mounting, DB seed
 │   ├── api/
 │   │   └── v1/
 │   │       ├── __init__.py
 │   │       ├── listings.py     ← GET /listings, GET /listings/{id}
-│   │       ├── analytics.py    ← GET /analytics/avg-price, /trends
+│   │       ├── analytics.py    ← GET /analytics/avg-price, /trends, /daily, etc.
 │   │       ├── deals.py        ← GET /deals/score
-│   │       ├── makes.py        ← GET /makes, GET /makes/{id}/models
+│   │       ├── makes.py        ← GET /makes, /makes/{name}/models, /{make}/models/{model}/years
 │   │       ├── search.py       ← GET /search
-│   │       └── scrape.py       ← POST /scrape/trigger, GET /scrape/status
+│   │       └── scrape.py       ← POST /scrape/trigger, /trigger/brand/{b}, GET /status, /brands
 │   ├── core/
 │   │   ├── config.py           ← Settings via pydantic-settings (.env)
 │   │   ├── database.py         ← MongoDB + Beanie initialisation
 │   │   ├── security.py         ← JWT token & API key helpers
 │   │   └── logging.py          ← Structured logging setup
 │   ├── models/
-│   │   ├── listing.py          ← Listing document
-│   │   ├── vehicle.py          ← Make & Model documents
+│   │   ├── listing.py          ← Listing document (make, model, condition strings)
+│   │   ├── vehicle.py          ← Make & Model documents (with slug + scrape_url)
 │   │   ├── deal_score.py       ← DealScore document
-│   │   └── price_snapshot.py   ← PriceSnapshot document
+│   │   ├── price_snapshot.py   ← PriceSnapshot (daily make×model×year×condition aggregate)
+│   │   └── daily_analytics.py  ← DailyAnalytics document (market/brand/brand_condition)
 │   ├── schemas/
 │   │   ├── listing.py          ← ListingBase, ListingCreate, ListingResponse
 │   │   ├── analytics.py        ← AvgPriceResponse, PriceTrendResponse
 │   │   └── deal.py             ← DealScoreResponse
 │   ├── scraper/
-│   │   ├── ikman_spider.py     ← Main spider — crawl + parse + clean
+│   │   ├── brands.py           ← Brand→model registry (11 brands, 300+ models + URLs)
+│   │   ├── ikman_spider.py     ← Spider — crawl per brand→model→condition
 │   │   ├── parser.py           ← HTML parsing (cards + detail pages)
 │   │   ├── cleaner.py          ← Data normalisation (price, mileage, year)
 │   │   ├── deduplicator.py     ← SHA-256 hash-based duplicate detection
 │   │   ├── playwright_fetch.py ← HTTP fetcher (httpx + Playwright fallback)
 │   │   ├── storage.py          ← Persist listings to MongoDB
-│   │   └── runner.py           ← Orchestrates the full scrape pipeline
+│   │   ├── seeder.py           ← Upsert Make/Model docs from brand registry
+│   │   └── runner.py           ← Orchestrates scrape pipeline + daily analytics
 │   ├── ml/
 │   │   ├── features.py         ← Feature engineering pipeline
 │   │   ├── trainer.py          ← Model training logic
@@ -52,16 +55,16 @@ vehicle-market-backend/
 │   │   └── model_store.py      ← Save/load .pkl model files
 │   ├── analytics/
 │   │   ├── market_summary.py   ← Aggregate market statistics
-│   │   ├── price_trends.py     ← Monthly average price computation
-│   │   └── depreciation.py     ← Price vs age/mileage curves
+│   │   ├── price_trends.py     ← Monthly avg price + year-by-year model history
+│   │   ├── depreciation.py     ← Price vs age/mileage curves
+│   │   └── daily_snapshot.py   ← Daily analytics engine (4 levels)
 │   └── tasks/
 │       ├── celery_app.py       ← Celery instance (Redis broker)
 │       ├── scrape_task.py      ← Background scrape task
 │       ├── train_task.py       ← Background ML training task
-│       └── snapshot_task.py    ← Daily price snapshot task
+│       └── snapshot_task.py    ← Daily analytics Celery task
 ├── models_store/               ← Trained model files (.pkl)
 ├── tests/                      ← Test suite
-├── alembic/                    ← Database migrations (historical)
 ├── requirements.txt            ← Python dependencies
 ├── .env                        ← Environment configuration
 └── .env.example                ← Template for .env
@@ -77,50 +80,38 @@ vehicle-market-backend/
 - Configures CORS middleware (allows all origins in dev)
 - Mounts all v1 routers under `/api/v1`
 - Registers a `/health` endpoint
-- Uses a **lifespan** context manager to initialise MongoDB on startup
+- **Lifespan**: initialises MongoDB, then runs `seed_makes_and_models()` to populate Make/Model collections
 
 ### `app/core/` — Core Infrastructure
 
 #### `config.py`
 - Uses `pydantic-settings` to load all config from `.env`
-- Exports a singleton `settings` object used throughout the app
-- Groups: App, MongoDB, Redis/Celery, Security, Scraper settings
+- Exports a singleton `settings` object
+- Key scraper settings: `SCRAPE_MAX_PAGES_PER_BRAND` (default 3), `SCRAPE_DELAY` (1.5s)
 
 #### `database.py`
 - Creates an async `AsyncIOMotorClient` connection to MongoDB
-- Initialises Beanie ODM with all 5 document models:
-  `Listing`, `Make`, `Model`, `PriceSnapshot`, `DealScore`
-
-#### `security.py`
-- `create_access_token()` — Generate signed JWT tokens
-- `verify_api_key()` — Validate API keys
-- Currently stubbed with `...` (implementation pending)
-
-#### `logging.py`
-- Configures structured logging to stdout
-- Format: `timestamp | LEVEL | logger_name | message`
-- Exports a `logger` instance named `vehicle_market`
+- Initialises Beanie ODM with 6 document models:
+  `Listing`, `Make`, `Model`, `PriceSnapshot`, `DealScore`, `DailyAnalytics`
 
 ---
 
 ### `app/models/` — Database Documents (Beanie)
 
-All models extend Beanie's `Document` class and map to MongoDB collections.
-
 #### `Listing`
 - **Collection**: `listings`
-- **Indexes**: `source_url`, `source_hash`, `make_id`, `model_id`
-- **Fields**: title, description, price, currency, mileage, year, location, source_url, source_hash, category, transmission, fuel_type, engine_capacity, condition, seller_name, image_urls, created_at, updated_at
+- **Indexes**: `source_url`, `source_hash`, `make`, `model`, `condition`, `year`, compound `[make, model, year, condition]`
+- **Fields**: title, description, price, currency, mileage, year, location, source_url, source_hash, make, model, condition, category, created_at, updated_at
 
 #### `Make`
 - **Collection**: `makes`
-- **Indexes**: `name`
-- **Fields**: name
+- **Indexes**: `name`, `slug`
+- **Fields**: name, slug, scrape_url
 
 #### `Model`
 - **Collection**: `models`
-- **Indexes**: `name`, `make_id`
-- **Fields**: name, make_id (reference to Make)
+- **Indexes**: `name`, `slug`, `make_slug`, compound `[make_slug, slug]`
+- **Fields**: name, slug, make_slug, scrape_url
 
 #### `DealScore`
 - **Collection**: `deal_scores`
@@ -129,104 +120,88 @@ All models extend Beanie's `Document` class and map to MongoDB collections.
 
 #### `PriceSnapshot`
 - **Collection**: `price_snapshots`
-- **Indexes**: `listing_id`, `captured_at`
-- **Fields**: listing_id, price, captured_at
+- **Indexes**: compound `[snapshot_date, make, model, year, condition]`, `[make, model]`
+- **Fields**: snapshot_date, make, model, year, condition, avg_price, min_price, max_price, listing_count, captured_at
+- **Note**: Each document is a **daily aggregate** for one make×model×year×condition group, not per-listing
+
+#### `DailyAnalytics`
+- **Collection**: `daily_analytics`
+- **Indexes**: compound `[snapshot_date, scope, brand, condition]`
+- **Fields**: snapshot_date, scope, brand, condition, total_listings, avg_price, min_price, max_price, median_price, price_change_pct, created_at
 
 ---
 
 ### `app/scraper/` — Web Scraping Pipeline
 
-The scraper follows a 5-step pipeline orchestrated by `runner.py`:
+The scraper crawls ikman.lk at model-level granularity:
+
+```
+For brands WITH model data (11 brands, 300+ models):
+  brand → model → condition → pages
+  e.g. toyota/aqua?tree.brand=toyota_toyota-aqua&enum.condition=used
+
+For brands WITHOUT model data (44 brands):
+  brand → condition → pages (brand-level fallback)
+```
+
+#### Pipeline:
 
 ```
 1. Crawl (ikman_spider.py)
-   ↓ fetch HTML pages
+   ↓ brand → model → condition (make/model injected from URL context)
 2. Parse (parser.py)
-   ↓ extract structured data
+   ↓ extract structured data from HTML
 3. Clean (cleaner.py)
-   ↓ normalise values
+   ↓ normalise price, mileage, year
 4. Deduplicate (deduplicator.py)
-   ↓ filter existing records
+   ↓ filter existing records by source_hash
 5. Store (storage.py)
    ↓ persist to MongoDB
+6. Analyse (daily_snapshot.py)
+   ↓ compute daily analytics + price snapshot aggregates
 ```
 
+#### `brands.py`
+- Complete brand→model registry for 11 brands (300+ models)
+- URL builder: `build_model_url(brand, model_slug, condition, page)`
+- Remaining 44 brands use `build_brand_url()` (brand-level only)
+
 #### `ikman_spider.py`
-- Crawls `https://ikman.lk/en/ads/sri-lanka/vehicles?page={n}`
-- Iterates through configurable number of pages (`SCRAPE_MAX_PAGES`)
-- Optionally fetches individual detail pages for richer data
-- Applies cleaning to all listings before returning
+- `crawl_model()` — crawl one brand+model+condition combo
+- `crawl_brand()` — crawl all models for a brand
+- `crawl_all_brands()` — full market sweep
+- Make, model, condition always injected from URL context (never null for registered brands)
 
-#### `parser.py`
-- **`parse_listing_cards(html)`** — Extracts ads from index pages
-  - Parses title, price, mileage, location, category from card elements
-  - Detects Sri Lankan districts (25 districts) and vehicle categories
-- **`parse_listing_detail(html)`** — Extracts rich data from ad detail pages
-  - Make, model, year, condition, transmission, fuel type, engine capacity
-  - Description, images, location
-  - Uses multiple CSS selector strategies for robustness
-
-#### `cleaner.py`
-- **`clean_price()`** — Normalises `"Rs 7,800,000"` → `7800000.0`
-- **`clean_mileage()`** — Normalises km/miles → kilometres
-- **`clean_year()`** — Extracts 4-digit year from various formats
-- **`clean_listing()`** — Applies all cleaning to a raw dict
-
-#### `deduplicator.py`
-- Generates SHA-256 hash from `source_url + title + price`
-- Checks against existing `source_hash` values in MongoDB
-- Returns `(new_listings, skipped_count)` tuple
-
-#### `playwright_fetch.py`
-- Primary: `httpx` async HTTP client (fast, lightweight)
-- Fallback: Playwright headless Chromium (for JS-rendered pages)
-- Implements retry logic with exponential backoff (3 retries)
-- Polite sequential fetching with configurable delay
-
-#### `storage.py`
-- Upsert logic: updates existing listings (by `source_hash`) or inserts new ones
-- Preserves `created_at` on updates, sets `updated_at`
+#### `seeder.py`
+- `seed_makes_and_models()` — upserts all Make/Model docs from brand registry
+- Runs automatically on server startup via `main.py` lifespan
+- Stores `scrape_url` for every make and model
 
 #### `runner.py`
-- `run_scrape_cycle()` — Async orchestrator for the full pipeline
-- `run_scrape_cycle_sync()` — Synchronous wrapper for Celery tasks
-
----
-
-### `app/ml/` — Machine Learning Module
-
-#### `features.py`
-- `build_features(listing)` — Transforms raw listing dict into a feature vector
-- Planned: encode make/model, normalise year, mileage, etc.
-
-#### `trainer.py`
-- `train_model()` — Train/retrain the price-prediction regression model
-- Planned: load data → feature engineering → train → evaluate → save
-
-#### `predictor.py`
-- `predict_price(features)` — Returns the predicted fair market price
-
-#### `scorer.py`
-- `score_listing(predicted, actual)` — Computes deal quality
-- Thresholds: < 0.85 = `good_deal`, 0.85–1.15 = `fair`, > 1.15 = `overpriced`
-
-#### `model_store.py`
-- `save_model(model, name)` — Pickle-serialise model to `models_store/`
-- `load_model(name)` — Load a saved model from disk
+- `run_scrape_cycle()` — orchestrates: crawl → dedup → store → daily analytics
+- `run_brand_scrape(brand)` — single-brand convenience wrapper
 
 ---
 
 ### `app/analytics/` — Market Analytics
 
 #### `market_summary.py`
-- `market_summary()` — Aggregate stats: total listings, avg price, makes/models count
+- `market_summary()` — aggregate stats: total listings, avg price, makes/models count
 
 #### `price_trends.py`
-- `monthly_avg_price(make, model, months)` — Monthly avg price over time
+- `monthly_avg_price(make, model, months)` — monthly avg price from listings
+- `model_year_price_history(make, model, condition)` — year-by-year avg from PriceSnapshot aggregates
 
 #### `depreciation.py`
-- `depreciation_curve(make, model)` — Price vs year data points
-- `mileage_curve(make, model)` — Price vs mileage data points
+- `depreciation_curve(make, model)` — price vs manufacturing year
+- `mileage_curve(make, model)` — price vs mileage bands (25k km buckets)
+
+#### `daily_snapshot.py`
+- `compute_and_save_daily_analytics()` — produces snapshots at 4 levels:
+  1. **Market-wide** — 1 DailyAnalytics doc/day
+  2. **Per-brand** — ~55 DailyAnalytics docs/day
+  3. **Per-brand×condition** — ~165 DailyAnalytics docs/day
+  4. **Per-make×model×year×condition** — PriceSnapshot records for granular trend analysis
 
 ---
 
@@ -234,21 +209,9 @@ The scraper follows a 5-step pipeline orchestrated by `runner.py`:
 
 Requires **Redis** as message broker.
 
-#### `celery_app.py`
-- Creates `Celery` instance with Redis broker/backend
-- Config: JSON serialisation, `Asia/Colombo` timezone, UTC enabled
-
-#### `scrape_task.py`
-- **Task name**: `scrape_listings`
-- Calls `run_scrape_cycle_sync()` to run a full scrape
-
-#### `train_task.py`
-- **Task name**: `retrain_model`
-- Calls `train_model()` to retrain the ML model
-
 #### `snapshot_task.py`
 - **Task name**: `snapshot_prices`
-- Archives current prices of all active listings
+- Calls `compute_and_save_daily_analytics()` to generate all snapshots
 
 **Running the Celery worker:**
 
@@ -263,33 +226,28 @@ celery -A app.tasks.celery_app worker --loglevel=info
 ```
 ┌──────────────────────────────────────────────────────────────┐
 │                        ikman.lk                               │
+│   55 brands × 300+ models × 3 conditions                     │
 └────────────────────────┬─────────────────────────────────────┘
                          │ HTTP (httpx / Playwright)
                          ▼
 ┌──────────────────────────────────────────────────────────────┐
 │  Scraper Pipeline                                             │
-│  ┌─────────┐  ┌────────┐  ┌─────────┐  ┌──────┐  ┌───────┐ │
-│  │ Spider  │→│ Parser │→│ Cleaner │→│ Dedup │→│ Store │  │
-│  └─────────┘  └────────┘  └─────────┘  └──────┘  └───┬───┘ │
+│  Spider → Parser → Cleaner → Dedup → Store → Analytics       │
 └──────────────────────────────────────────────────────┬───────┘
-                                                       │
                                                        ▼
 ┌──────────────────────────────────────────────────────────────┐
 │  MongoDB                                                      │
-│  ┌───────────┐ ┌──────┐ ┌────────┐ ┌───────────┐ ┌────────┐│
-│  │ listings  │ │makes │ │models  │ │deal_scores│ │snapshots││
-│  └───────────┘ └──────┘ └────────┘ └───────────┘ └────────┘│
+│  ┌──────────┐ ┌─────┐ ┌──────┐ ┌───────────┐ ┌───────────┐ │
+│  │ listings │ │makes│ │models│ │deal_scores│ │price_snaps│ │
+│  └──────────┘ └─────┘ └──────┘ └───────────┘ └───────────┘ │
+│  ┌─────────────────┐                                         │
+│  │ daily_analytics │                                         │
+│  └─────────────────┘                                         │
 └────────────────────────┬─────────────────────────────────────┘
-                         │
                          ▼
 ┌──────────────────────────────────────────────────────────────┐
-│  FastAPI                                                      │
-│  /api/v1/listings  /analytics  /deals  /makes  /search       │
-└──────────────────────────────────────────────────────────────┘
-                         │
-                         ▼
-┌──────────────────────────────────────────────────────────────┐
-│  React Frontend (localhost:5173)                               │
+│  FastAPI  /api/v1/                                            │
+│  listings  analytics  deals  makes  search  scrape            │
 └──────────────────────────────────────────────────────────────┘
 ```
 
@@ -299,11 +257,11 @@ celery -A app.tasks.celery_app worker --loglevel=info
 
 | Module | Status | Notes |
 |---|---|---|
-| API Routes | ✅ Scaffolded | Endpoints return placeholder data, DB queries pending |
-| Models | ✅ Complete | All Beanie documents defined with indexes |
-| Schemas | ✅ Complete | Pydantic models for all endpoints |
-| Scraper | ✅ Functional | Full pipeline: fetch → parse → clean → dedup → store |
+| API Routes | ✅ Complete | All 22 endpoints connected to MongoDB |
+| Models | ✅ Complete | 6 Beanie documents with compound indexes |
+| Schemas | ✅ Complete | Pydantic schemas match current models |
+| Scraper | ✅ Functional | Model-level crawling for 11 brands, brand-level for 44 |
+| Analytics | ✅ Functional | 4-level daily snapshots, depreciation, mileage curves |
 | ML | 🔧 Scaffolded | Scorer logic complete, trainer/predictor need implementation |
-| Analytics | 🔧 Scaffolded | Functions defined, DB queries pending |
-| Tasks | ✅ Scaffolded | Celery tasks defined, require Redis to run |
+| Tasks | ✅ Functional | Daily analytics via Celery, require Redis |
 | Security | 🔧 Scaffolded | JWT & API key helpers stubbed |
