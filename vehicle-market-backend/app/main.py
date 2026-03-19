@@ -10,6 +10,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.core.config import settings
 from app.core.logging import setup_logging
 from app.core.database import init_db
+from app.scraper.seeder import seed_makes_and_models
 from app.api.v1 import listings, analytics, deals, makes, search
 from app.api.v1 import scrape
 
@@ -18,6 +19,7 @@ from app.api.v1 import scrape
 async def lifespan(app: FastAPI):
     """Startup / shutdown lifecycle — initialise MongoDB on boot."""
     await init_db()
+    await seed_makes_and_models()   # upsert brand/model registry into DB
     yield
 
 

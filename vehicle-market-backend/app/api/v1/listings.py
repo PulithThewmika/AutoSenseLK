@@ -28,9 +28,9 @@ async def get_listings(
     query: dict = {}
 
     if make:
-        query["make_id"] = {"$regex": make, "$options": "i"}
+        query["make"] = {"$regex": make, "$options": "i"}
     if model:
-        query["model_id"] = {"$regex": model, "$options": "i"}
+        query["model"] = {"$regex": model, "$options": "i"}
     if min_price is not None or max_price is not None:
         price_filter: dict = {}
         if min_price is not None:
@@ -93,15 +93,10 @@ def _serialize_listing(listing: Listing) -> dict:
         "year": listing.year,
         "location": listing.location,
         "source_url": listing.source_url,
-        "make_id": listing.make_id,
-        "model_id": listing.model_id,
-        "category": listing.category,
-        "transmission": listing.transmission,
-        "fuel_type": listing.fuel_type,
-        "engine_capacity": listing.engine_capacity,
+        "make": listing.make,
+        "model": listing.model,
         "condition": listing.condition,
-        "seller_name": listing.seller_name,
-        "image_urls": listing.image_urls,
+        "category": listing.category,
         "created_at": listing.created_at.isoformat() if listing.created_at else None,
         "updated_at": listing.updated_at.isoformat() if listing.updated_at else None,
     }
