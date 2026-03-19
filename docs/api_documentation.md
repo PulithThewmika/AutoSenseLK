@@ -47,8 +47,8 @@ Return paginated vehicle listings with optional filters.
 |---|---|---|---|
 | `page` | `int` | `1` | Page number (≥ 1) |
 | `size` | `int` | `20` | Items per page (1–100) |
-| `make` | `string` | `null` | Filter by vehicle make |
-| `model` | `string` | `null` | Filter by vehicle model |
+| `make` | `string` | `null` | Filter by vehicle make (e.g. "Toyota") |
+| `model` | `string` | `null` | Filter by vehicle model (e.g. "Aqua") |
 | `min_price` | `float` | `null` | Minimum price (LKR) |
 | `max_price` | `float` | `null` | Maximum price (LKR) |
 | `year_from` | `int` | `null` | Minimum manufacturing year |
@@ -57,10 +57,10 @@ Return paginated vehicle listings with optional filters.
 **Example Request:**
 
 ```
-GET /api/v1/listings/?page=1&size=10&make=Toyota&min_price=5000000&year_from=2015
+GET /api/v1/listings/?page=1&size=10&make=Toyota&model=Aqua&min_price=5000000
 ```
 
-**Response Schema:** `ListingListResponse`
+**Response:**
 
 ```json
 {
@@ -69,7 +69,7 @@ GET /api/v1/listings/?page=1&size=10&make=Toyota&min_price=5000000&year_from=201
   "total": 142,
   "results": [
     {
-      "id": 1,
+      "id": "6650af...",
       "title": "Toyota Aqua S 2016",
       "price": 7680000.0,
       "currency": "LKR",
@@ -77,8 +77,10 @@ GET /api/v1/listings/?page=1&size=10&make=Toyota&min_price=5000000&year_from=201
       "year": 2016,
       "location": "Colombo",
       "source_url": "https://ikman.lk/en/ad/...",
-      "make_id": 1,
-      "model_id": 5,
+      "make": "Toyota",
+      "model": "Aqua",
+      "condition": "used",
+      "category": "Cars",
       "created_at": "2026-03-15T12:00:00Z"
     }
   ]
@@ -89,21 +91,11 @@ GET /api/v1/listings/?page=1&size=10&make=Toyota&min_price=5000000&year_from=201
 
 ### `GET /api/v1/listings/{listing_id}`
 
-Return a single listing by its ID.
-
-**Path Parameters:**
+Return a single listing by its MongoDB ObjectId.
 
 | Parameter | Type | Description |
 |---|---|---|
-| `listing_id` | `int` | Unique listing identifier |
-
-**Response:**
-
-```json
-{
-  "listing_id": 42
-}
-```
+| `listing_id` | `string` | MongoDB ObjectId |
 
 ---
 
@@ -113,14 +105,12 @@ Return a single listing by its ID.
 
 Return the average price across listings, optionally filtered by make and/or model.
 
-**Query Parameters:**
-
 | Parameter | Type | Default | Description |
 |---|---|---|---|
 | `make` | `string` | `null` | Filter by make name |
 | `model` | `string` | `null` | Filter by model name |
 
-**Response Schema:** `AvgPriceResponse`
+**Response:**
 
 ```json
 {
@@ -137,44 +127,39 @@ Return the average price across listings, optionally filtered by make and/or mod
 
 Return monthly price trends for a make/model over a specified number of months.
 
-**Query Parameters:**
-
 | Parameter | Type | Default | Description |
 |---|---|---|---|
 | `make` | `string` | `null` | Filter by make name |
 | `model` | `string` | `null` | Filter by model name |
 | `months` | `int` | `12` | Number of months of history (1–60) |
 
-**Response Schema:** `PriceTrendResponse`
-
-```json
-{
-  "make": "Toyota",
-  "model": "Aqua",
-  "trends": [
-    { "month": "2026-01", "avg_price": 7350000.0, "count": 28 },
-    { "month": "2026-02", "avg_price": 7500000.0, "count": 31 }
-  ]
-}
-```
-
 ---
 
 ### `GET /api/v1/analytics/summary`
 
-Return overall market statistics including total listings, average price, and counts of unique makes/models.
+Return overall market statistics: total listings, average price, unique makes/models count.
 
 ---
 
 ### `GET /api/v1/analytics/depreciation`
 
-Return price-vs-year depreciation curve.
+Return price-vs-year depreciation curve (avg price per manufacturing year).
+
+| Parameter | Type | Default | Description |
+|---|---|---|---|
+| `make` | `string` | `null` | Filter by make |
+| `model` | `string` | `null` | Filter by model |
 
 ---
 
 ### `GET /api/v1/analytics/mileage`
 
 Return price-vs-mileage curve bucketed by 25,000 km bands.
+
+| Parameter | Type | Default | Description |
+|---|---|---|---|
+| `make` | `string` | `null` | Filter by make |
+| `model` | `string` | `null` | Filter by model |
 
 ---
 
@@ -186,13 +171,19 @@ Return the latest market-wide daily analytics snapshot.
 
 ### `GET /api/v1/analytics/daily/brands`
 
-Return the latest daily snapshot for every brand.
+Return the latest daily snapshot for every brand, sorted by listing count.
 
 ---
 
 ### `GET /api/v1/analytics/daily/brand/{brand}`
 
-Return the latest daily snapshot for a specific brand (with condition breakdown).
+Return the latest daily snapshot for a specific brand, with condition breakdown (used, brand_new, reconditioned).
+
+---
+
+### `GET /api/v1/analytics/daily/brand/{brand}/{condition}`
+
+Return the latest snapshot for a specific brand + condition combination.
 
 ---
 
@@ -200,11 +191,9 @@ Return the latest daily snapshot for a specific brand (with condition breakdown)
 
 Return historical daily analytics snapshots.
 
-**Query Parameters:**
-
 | Parameter | Type | Default | Description |
 |---|---|---|---|
-| `days` | `int` | `30` | Number of days |
+| `days` | `int` | `30` | Number of days (1–365) |
 | `scope` | `string` | `"market"` | `"market"`, `"brand"`, or `"brand_condition"` |
 | `brand` | `string` | `null` | Filter by brand (optional) |
 
@@ -214,19 +203,17 @@ Return historical daily analytics snapshots.
 
 ### `GET /api/v1/deals/score`
 
-Return the ML-generated deal score for a specific listing. Compares the listing's actual price against the model-predicted fair price.
-
-**Query Parameters:**
+Return the deal score for a specific listing. Compares the listing's actual price against the average price of similar listings (same make/model).
 
 | Parameter | Type | Required | Description |
 |---|---|---|---|
-| `listing_id` | `int` | ✅ Yes | ID of the listing to score |
+| `listing_id` | `string` | ✅ Yes | MongoDB ObjectId of the listing |
 
-**Response Schema:** `DealScoreResponse`
+**Response:**
 
 ```json
 {
-  "listing_id": 42,
+  "listing_id": "6650af...",
   "predicted_price": 7420000.0,
   "actual_price": 6750000.0,
   "score": 0.9097,
@@ -249,40 +236,59 @@ Return the ML-generated deal score for a specific listing. Compares the listing'
 
 ### `GET /api/v1/makes/`
 
-Return all known vehicle makes (manufacturers).
+Return all vehicle makes from the database (auto-seeded on startup from brand registry).
 
 **Response:**
 
 ```json
 {
   "makes": [
-    { "id": "abc123", "name": "Toyota" },
-    { "id": "def456", "name": "Honda" },
-    { "id": "ghi789", "name": "Suzuki" }
-  ]
+    { "name": "Toyota", "slug": "toyota", "scrape_url": "https://ikman.lk/en/ads/sri-lanka/cars/toyota?tree.brand=toyota" },
+    { "name": "Honda", "slug": "honda", "scrape_url": "https://ikman.lk/en/ads/sri-lanka/cars/honda?tree.brand=honda" }
+  ],
+  "total": 55
 }
 ```
 
 ---
 
-### `GET /api/v1/makes/{make_id}/models`
+### `GET /api/v1/makes/{make_name}/models`
 
-Return all models belonging to a specific make.
-
-**Path Parameters:**
-
-| Parameter | Type | Description |
-|---|---|---|
-| `make_id` | `int` | ID of the vehicle make |
+Return all models for a make, with live listing counts.
 
 **Response:**
 
 ```json
 {
-  "make_id": 1,
+  "make": "toyota",
   "models": [
-    { "id": "m001", "name": "Aqua", "make_id": "abc123" },
-    { "id": "m002", "name": "Prius", "make_id": "abc123" }
+    { "name": "Aqua", "slug": "aqua", "scrape_url": "https://ikman.lk/.../aqua?tree.brand=toyota_toyota-aqua", "listing_count": 142 },
+    { "name": "Prius", "slug": "prius", "scrape_url": "https://ikman.lk/.../prius?tree.brand=toyota_toyota-prius", "listing_count": 98 }
+  ],
+  "total": 68
+}
+```
+
+---
+
+### `GET /api/v1/makes/{make_name}/models/{model_name}/years`
+
+Return year-by-year average price history for a make/model (uses PriceSnapshot aggregates).
+
+| Parameter | Type | Default | Description |
+|---|---|---|---|
+| `condition` | `string` | `null` | Filter by condition |
+
+**Response:**
+
+```json
+{
+  "make": "toyota",
+  "model": "aqua",
+  "condition": null,
+  "data": [
+    { "year": 2014, "avg_price": 5800000.0, "min_price": 4200000.0, "max_price": 7200000.0, "total_listings": 45 },
+    { "year": 2015, "avg_price": 6500000.0, "min_price": 5000000.0, "max_price": 8100000.0, "total_listings": 62 }
   ]
 }
 ```
@@ -293,32 +299,13 @@ Return all models belonging to a specific make.
 
 ### `GET /api/v1/search/`
 
-Full-text search across all vehicle listings.
-
-**Query Parameters:**
+Full-text search across vehicle listings (title, description, make, model, category, location).
 
 | Parameter | Type | Default | Required | Description |
 |---|---|---|---|---|
-| `q` | `string` | — | ✅ Yes | Search query (min 1 char, searches across title, description, make, model, category, and location) |
+| `q` | `string` | — | ✅ Yes | Search query (min 1 char) |
 | `page` | `int` | `1` | No | Page number (≥ 1) |
 | `size` | `int` | `20` | No | Results per page (1–100) |
-
-**Example Request:**
-
-```
-GET /api/v1/search/?q=toyota+aqua&page=1&size=10
-```
-
-**Response:**
-
-```json
-{
-  "query": "toyota aqua",
-  "page": 1,
-  "size": 10,
-  "results": []
-}
-```
 
 ---
 
@@ -326,7 +313,7 @@ GET /api/v1/search/?q=toyota+aqua&page=1&size=10
 
 ### `POST /api/v1/scrape/trigger`
 
-Manually trigger a full market scrape cycle (all brands × all conditions). The scrape runs in the background and returns immediately.
+Trigger a full market scrape (all brands → all models → all conditions). Runs in background.
 
 **Response:**
 
@@ -342,13 +329,13 @@ Manually trigger a full market scrape cycle (all brands × all conditions). The 
 
 ### `POST /api/v1/scrape/trigger/brand/{brand}`
 
-Scrape a single brand across all conditions on-demand. Returns immediately.
+Scrape a single brand across all its models and conditions. Runs in background.
 
 ---
 
 ### `GET /api/v1/scrape/brands`
 
-Return the list of all 55+ supported brands and conditions.
+Return the full list of supported brands and conditions.
 
 ---
 
@@ -356,134 +343,91 @@ Return the list of all 55+ supported brands and conditions.
 
 Return the result of the last scrape run.
 
-**Response (no runs yet):**
-
-```json
-{
-  "status": "no_runs_yet"
-}
-```
-
-**Response (completed):**
-
-```json
-{
-  "status": "completed",
-  "total_found": 120,
-  "new_listings": 85,
-  "duplicates_skipped": 35,
-  "saved": 85
-}
-```
-
-**Response (failed):**
-
-```json
-{
-  "status": "failed",
-  "error": "Error description"
-}
-```
-
 ---
 
 ## Schemas Reference
 
-### Listing Schemas
-
-#### `ListingBase`
-
-| Field | Type | Default | Description |
-|---|---|---|---|
-| `title` | `string` | — | Listing title |
-| `price` | `float` | — | Price in LKR |
-| `currency` | `string` | `"LKR"` | Currency code |
-| `mileage` | `float?` | `null` | Mileage in km |
-| `year` | `int?` | `null` | Year of manufacture |
-| `location` | `string?` | `null` | Sri Lankan district |
-
-#### `ListingCreate` (extends ListingBase)
+### Listing Schema
 
 | Field | Type | Description |
 |---|---|---|
-| `source_url` | `HttpUrl` | URL of the original listing |
-| `make_id` | `int?` | Reference to make |
-| `model_id` | `int?` | Reference to model |
-
-#### `ListingResponse` (extends ListingBase)
-
-| Field | Type | Description |
-|---|---|---|
-| `id` | `int` | Unique listing ID |
-| `source_url` | `string` | Original listing URL |
-| `make_id` | `int?` | Reference to make |
-| `model_id` | `int?` | Reference to model |
-| `created_at` | `datetime?` | Timestamp of creation |
-
-#### `ListingListResponse`
-
-| Field | Type | Description |
-|---|---|---|
-| `page` | `int` | Current page |
-| `size` | `int` | Page size |
-| `total` | `int` | Total matching listings |
-| `results` | `ListingResponse[]` | Array of listings |
+| `id` | `string` | MongoDB ObjectId |
+| `title` | `string` | Listing title |
+| `description` | `string?` | Listing description |
+| `price` | `float` | Price in LKR |
+| `currency` | `string` | Currency code (default `"LKR"`) |
+| `mileage` | `float?` | Mileage in km |
+| `year` | `int?` | Year of manufacture |
+| `location` | `string?` | Sri Lankan district |
+| `source_url` | `string` | Original ikman.lk URL |
+| `source_hash` | `string` | SHA-256 dedup hash |
+| `make` | `string?` | Vehicle make (e.g. "Toyota") |
+| `model` | `string?` | Vehicle model (e.g. "Aqua") |
+| `condition` | `string?` | `used` / `brand_new` / `reconditioned` |
+| `category` | `string?` | Vehicle category (e.g. "Cars") |
+| `created_at` | `datetime` | When scraped |
+| `updated_at` | `datetime?` | Last update time |
 
 ---
 
-### Analytics Schemas
-
-#### `AvgPriceResponse`
+### Make Schema
 
 | Field | Type | Description |
 |---|---|---|
-| `make` | `string?` | Make filter used |
-| `model` | `string?` | Model filter used |
-| `avg_price` | `float` | Computed average price |
-| `sample_count` | `int` | Number of listings sampled |
+| `name` | `string` | Display name (e.g. "Toyota") |
+| `slug` | `string` | URL slug (e.g. "toyota") |
+| `scrape_url` | `string` | ikman.lk scrape URL |
 
-#### `PriceTrendPoint`
-
-| Field | Type | Description |
-|---|---|---|
-| `month` | `string` | Month label (e.g. `"2026-01"`) |
-| `avg_price` | `float` | Average price for the month |
-| `count` | `int` | Number of listings in that month |
-
-#### `PriceTrendResponse`
+### Model Schema
 
 | Field | Type | Description |
 |---|---|---|
-| `make` | `string?` | Make filter used |
-| `model` | `string?` | Model filter used |
-| `trends` | `PriceTrendPoint[]` | Array of monthly data points |
+| `name` | `string` | Display name (e.g. "Aqua") |
+| `slug` | `string` | URL slug (e.g. "aqua") |
+| `make_slug` | `string` | Parent brand slug |
+| `scrape_url` | `string` | ikman.lk model-level scrape URL |
 
-#### `DailyAnalyticsResponse`
+---
+
+### PriceSnapshot Schema (Daily Aggregate)
 
 | Field | Type | Description |
 |---|---|---|
-| `date` | `string` | Snapshot date (e.g. "2026-03-19") |
+| `snapshot_date` | `date` | Day of snapshot |
+| `make` | `string` | Vehicle make |
+| `model` | `string` | Vehicle model |
+| `year` | `int?` | Manufacture year |
+| `condition` | `string?` | Condition filter |
+| `avg_price` | `float` | Average price in group |
+| `min_price` | `float` | Lowest price |
+| `max_price` | `float` | Highest price |
+| `listing_count` | `int` | Listings in group |
+
+---
+
+### DailyAnalytics Schema
+
+| Field | Type | Description |
+|---|---|---|
+| `date` | `string` | Snapshot date |
 | `scope` | `string` | `"market"`, `"brand"`, or `"brand_condition"` |
 | `brand` | `string?` | Brand name or null |
-| `condition` | `string?` | Condition (used, brand_new...) or null |
-| `total_listings` | `int` | Number of active listings |
-| `avg_price` | `float` | Average listed price |
-| `min_price` | `float` | Lowest listed price |
-| `max_price` | `float` | Highest listed price |
-| `median_price` | `float` | Median listed price |
-| `price_change_pct` | `float?` | Change from previous day |
-
+| `condition` | `string?` | Condition or null |
+| `total_listings` | `int` | Active listings |
+| `avg_price` | `float` | Average price |
+| `min_price` | `float` | Lowest price |
+| `max_price` | `float` | Highest price |
+| `median_price` | `float` | Median price |
+| `price_change_pct` | `float?` | % change vs previous day |
 
 ---
 
-### Deal Schema
-
-#### `DealScoreResponse`
+### DealScore Schema
 
 | Field | Type | Description |
 |---|---|---|
-| `listing_id` | `int` | Listing that was scored |
-| `predicted_price` | `float` | ML-predicted fair market price |
+| `listing_id` | `string` | MongoDB ObjectId of scored listing |
+| `predicted_price` | `float` | Predicted fair market price |
 | `actual_price` | `float` | Actual listed price |
 | `score` | `float` | Ratio (actual / predicted) |
 | `label` | `string` | `good_deal` / `fair` / `overpriced` |
@@ -505,10 +449,12 @@ Return the result of the last scrape run.
 | `GET` | `/api/v1/analytics/daily` | analytics | Latest market-wide snapshot |
 | `GET` | `/api/v1/analytics/daily/brands` | analytics | Latest snapshot for all brands |
 | `GET` | `/api/v1/analytics/daily/brand/{brand}` | analytics | Snapshot for specific brand |
+| `GET` | `/api/v1/analytics/daily/brand/{brand}/{condition}` | analytics | Brand + condition snapshot |
 | `GET` | `/api/v1/analytics/daily/history` | analytics | Historical daily snapshots |
-| `GET` | `/api/v1/deals/score` | deals | ML deal quality score |
-| `GET` | `/api/v1/makes/` | makes | All vehicle makes |
-| `GET` | `/api/v1/makes/{make_id}/models` | makes | Models for a make |
+| `GET` | `/api/v1/deals/score` | deals | Deal quality score |
+| `GET` | `/api/v1/makes/` | makes | All vehicle makes (with scrape URLs) |
+| `GET` | `/api/v1/makes/{name}/models` | makes | Models for a make (with listing counts) |
+| `GET` | `/api/v1/makes/{make}/models/{model}/years` | makes | Year-by-year price history |
 | `GET` | `/api/v1/search/` | search | Full-text search |
 | `POST` | `/api/v1/scrape/trigger` | scrape | Trigger full market scrape |
 | `POST` | `/api/v1/scrape/trigger/brand/{brand}` | scrape | Trigger single-brand scrape |
