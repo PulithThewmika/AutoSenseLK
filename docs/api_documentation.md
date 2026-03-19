@@ -81,6 +81,7 @@ GET /api/v1/listings/?page=1&size=10&make=Toyota&model=Aqua&min_price=5000000
       "model": "Aqua",
       "condition": "used",
       "category": "Cars",
+      "posted_date": "2026-03-15",
       "created_at": "2026-03-15T12:00:00Z"
     }
   ]
@@ -246,7 +247,7 @@ Return all vehicle makes from the database (auto-seeded on startup from brand re
     { "name": "Toyota", "slug": "toyota", "scrape_url": "https://ikman.lk/en/ads/sri-lanka/cars/toyota?tree.brand=toyota" },
     { "name": "Honda", "slug": "honda", "scrape_url": "https://ikman.lk/en/ads/sri-lanka/cars/honda?tree.brand=honda" }
   ],
-  "total": 55
+  "total": 56
 }
 ```
 
@@ -321,7 +322,7 @@ Trigger a full market scrape (all brands → all models → all conditions). Run
 {
   "message": "Full market scrape started (all brands × all conditions)",
   "status": "running",
-  "brands_count": 55
+  "brands_count": 56
 }
 ```
 
@@ -365,6 +366,7 @@ Return the result of the last scrape run.
 | `model` | `string?` | Vehicle model (e.g. "Aqua") |
 | `condition` | `string?` | `used` / `brand_new` / `reconditioned` |
 | `category` | `string?` | Vehicle category (e.g. "Cars") |
+| `posted_date` | `string?` | Date ad was posted (ISO `YYYY-MM-DD`) |
 | `created_at` | `datetime` | When scraped |
 | `updated_at` | `datetime?` | Last update time |
 
