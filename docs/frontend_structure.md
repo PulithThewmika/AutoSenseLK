@@ -214,7 +214,7 @@ All styles are in a single CSS file (~15KB). Key design decisions:
 | **React Router** | Add routing for multi-page navigation (Market, Compare, Trends, etc.) |
 | **API Integration** | Connect to backend API for real-time data (listings, analytics, trends) |
 | **Search Page** | Interface for searching and filtering vehicle listings |
-| **Market Dashboard** | Live dashboard with real data from `/api/v1/analytics/` |
+| **Market Dashboard** | Live dashboard with real data from `/api/v1/analytics/daily` |
 | **Deal Checker** | Form to paste ikman.lk URL and get deal score from `/api/v1/deals/score` |
 | **Comparison Page** | Side-by-side model comparison using analytics data |
 | **Trend Visualisations** | Connect chart to `/api/v1/analytics/trends` for real data |

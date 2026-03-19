@@ -249,7 +249,7 @@ Full-text search across all vehicle listings.
 
 | Parameter | Type | Default | Required | Description |
 |---|---|---|---|---|
-| `q` | `string` | — | ✅ Yes | Search query (min 1 char) |
+| `q` | `string` | — | ✅ Yes | Search query (min 1 char, searches across title, description, make, model, category, and location) |
 | `page` | `int` | `1` | No | Page number (≥ 1) |
 | `size` | `int` | `20` | No | Results per page (1–100) |
 
@@ -276,16 +276,29 @@ GET /api/v1/search/?q=toyota+aqua&page=1&size=10
 
 ### `POST /api/v1/scrape/trigger`
 
-Manually trigger a scrape cycle. The scrape runs in the background and returns immediately.
+Manually trigger a full market scrape cycle (all brands × all conditions). The scrape runs in the background and returns immediately.
 
 **Response:**
 
 ```json
 {
-  "message": "Scrape cycle started",
-  "status": "running"
+  "message": "Full market scrape started (all brands × all conditions)",
+  "status": "running",
+  "brands_count": 55
 }
 ```
+
+---
+
+### `POST /api/v1/scrape/trigger/brand/{brand}`
+
+Scrape a single brand across all conditions on-demand. Returns immediately.
+
+---
+
+### `GET /api/v1/scrape/brands`
+
+Return the list of all 55+ supported brands and conditions.
 
 ---
 
@@ -395,6 +408,22 @@ Return the result of the last scrape run.
 | `model` | `string?` | Model filter used |
 | `trends` | `PriceTrendPoint[]` | Array of monthly data points |
 
+#### `DailyAnalyticsResponse`
+
+| Field | Type | Description |
+|---|---|---|
+| `date` | `string` | Snapshot date (e.g. "2026-03-19") |
+| `scope` | `string` | `"market"`, `"brand"`, or `"brand_condition"` |
+| `brand` | `string?` | Brand name or null |
+| `condition` | `string?` | Condition (used, brand_new...) or null |
+| `total_listings` | `int` | Number of active listings |
+| `avg_price` | `float` | Average listed price |
+| `min_price` | `float` | Lowest listed price |
+| `max_price` | `float` | Highest listed price |
+| `median_price` | `float` | Median listed price |
+| `price_change_pct` | `float?` | Change from previous day |
+
+
 ---
 
 ### Deal Schema
@@ -420,9 +449,18 @@ Return the result of the last scrape run.
 | `GET` | `/api/v1/listings/{listing_id}` | listings | Single listing detail |
 | `GET` | `/api/v1/analytics/avg-price` | analytics | Average price by make/model |
 | `GET` | `/api/v1/analytics/trends` | analytics | Monthly price trends |
+| `GET` | `/api/v1/analytics/summary` | analytics | Overall market summary |
+| `GET` | `/api/v1/analytics/depreciation` | analytics | Depreciation curve |
+| `GET` | `/api/v1/analytics/mileage` | analytics | Mileage curve |
+| `GET` | `/api/v1/analytics/daily` | analytics | Latest market-wide snapshot |
+| `GET` | `/api/v1/analytics/daily/brands` | analytics | Latest snapshot for all brands |
+| `GET` | `/api/v1/analytics/daily/brand/{brand}` | analytics | Snapshot for specific brand |
+| `GET` | `/api/v1/analytics/daily/history` | analytics | Historical daily snapshots |
 | `GET` | `/api/v1/deals/score` | deals | ML deal quality score |
 | `GET` | `/api/v1/makes/` | makes | All vehicle makes |
 | `GET` | `/api/v1/makes/{make_id}/models` | makes | Models for a make |
 | `GET` | `/api/v1/search/` | search | Full-text search |
-| `POST` | `/api/v1/scrape/trigger` | scrape | Trigger scrape cycle |
+| `POST` | `/api/v1/scrape/trigger` | scrape | Trigger full market scrape |
+| `POST` | `/api/v1/scrape/trigger/brand/{brand}` | scrape | Trigger single-brand scrape |
 | `GET` | `/api/v1/scrape/status` | scrape | Last scrape result |
+| `GET` | `/api/v1/scrape/brands` | scrape | List supported brands |
