@@ -38,7 +38,7 @@ vehicle-market-backend/
 │   │   ├── analytics.py        ← AvgPriceResponse, PriceTrendResponse
 │   │   └── deal.py             ← DealScoreResponse
 │   ├── scraper/
-│   │   ├── brands.py           ← Brand→model registry (11 brands, 300+ models + URLs)
+│   │   ├── brands.py           ← Brand→model registry (53 brands, 546 models + URLs)
 │   │   ├── ikman_spider.py     ← Spider — crawl per brand→model→condition
 │   │   ├── parser.py           ← HTML parsing (cards + detail pages)
 │   │   ├── cleaner.py          ← Data normalisation (price, mileage, year)
@@ -100,8 +100,8 @@ vehicle-market-backend/
 
 #### `Listing`
 - **Collection**: `listings`
-- **Indexes**: `source_url`, `source_hash`, `make`, `model`, `condition`, `year`, compound `[make, model, year, condition]`
-- **Fields**: title, description, price, currency, mileage, year, location, source_url, source_hash, make, model, condition, category, created_at, updated_at
+- **Indexes**: `source_url`, `source_hash`, `make`, `model`, `condition`, `year`, `posted_date`, compound `[make, model, year, condition]`, `[make, condition]`, `[posted_date, make]`
+- **Fields**: title, description, price, currency, mileage, year, location, source_url, source_hash, make, model, condition, category, posted_date, created_at, updated_at
 
 #### `Make`
 - **Collection**: `makes`
@@ -136,11 +136,11 @@ vehicle-market-backend/
 The scraper crawls ikman.lk at model-level granularity:
 
 ```
-For brands WITH model data (11 brands, 300+ models):
+For brands WITH model data (53 brands, 546 models):
   brand → model → condition → pages
   e.g. toyota/aqua?tree.brand=toyota_toyota-aqua&enum.condition=used
 
-For brands WITHOUT model data (44 brands):
+For brands WITHOUT model data (3 brands):
   brand → condition → pages (brand-level fallback)
 ```
 
@@ -162,9 +162,9 @@ For brands WITHOUT model data (44 brands):
 ```
 
 #### `brands.py`
-- Complete brand→model registry for 11 brands (300+ models)
+- Complete brand→model registry for 53 brands (546 models)
 - URL builder: `build_model_url(brand, model_slug, condition, page)`
-- Remaining 44 brands use `build_brand_url()` (brand-level only)
+- Remaining 3 brands use `build_brand_url()` (brand-level only)
 
 #### `ikman_spider.py`
 - `crawl_model()` — crawl one brand+model+condition combo
@@ -199,9 +199,10 @@ For brands WITHOUT model data (44 brands):
 #### `daily_snapshot.py`
 - `compute_and_save_daily_analytics()` — produces snapshots at 4 levels:
   1. **Market-wide** — 1 DailyAnalytics doc/day
-  2. **Per-brand** — ~55 DailyAnalytics docs/day
-  3. **Per-brand×condition** — ~165 DailyAnalytics docs/day
+  2. **Per-brand** — ~56 DailyAnalytics docs/day
+  3. **Per-brand×condition** — ~168 DailyAnalytics docs/day
   4. **Per-make×model×year×condition** — PriceSnapshot records for granular trend analysis
+- **Features**: Applies IQR-based outlier filtering and `posted_date` matching for true day-by-day analysis.
 
 ---
 
@@ -226,7 +227,7 @@ celery -A app.tasks.celery_app worker --loglevel=info
 ```
 ┌──────────────────────────────────────────────────────────────┐
 │                        ikman.lk                               │
-│   55 brands × 300+ models × 3 conditions                     │
+│   56 brands × 546 models × 3 conditions                       │
 └────────────────────────┬─────────────────────────────────────┘
                          │ HTTP (httpx / Playwright)
                          ▼
@@ -260,7 +261,7 @@ celery -A app.tasks.celery_app worker --loglevel=info
 | API Routes | ✅ Complete | All 22 endpoints connected to MongoDB |
 | Models | ✅ Complete | 6 Beanie documents with compound indexes |
 | Schemas | ✅ Complete | Pydantic schemas match current models |
-| Scraper | ✅ Functional | Model-level crawling for 11 brands, brand-level for 44 |
+| Scraper | ✅ Functional | Model-level crawling for 53 brands, brand-level for 3 |
 | Analytics | ✅ Functional | 4-level daily snapshots, depreciation, mileage curves |
 | ML | 🔧 Scaffolded | Scorer logic complete, trainer/predictor need implementation |
 | Tasks | ✅ Functional | Daily analytics via Celery, require Redis |
