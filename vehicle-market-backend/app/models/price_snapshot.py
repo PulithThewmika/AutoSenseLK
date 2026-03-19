@@ -2,19 +2,37 @@
 Historical price snapshot document model (Beanie / MongoDB).
 """
 
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
+from typing import Optional
 
 from beanie import Document
 from pydantic import Field
 
 
 class PriceSnapshot(Document):
-    """Daily snapshot of a listing's price for trend analysis."""
+    """
+    Daily price snapshot for a specific make-model-year-condition combination.
 
-    listing_id: str  # Reference to Listing document ID
-    price: float
+    One document per unique (make, model, year, condition) group per day,
+    storing the average price across all active listings in that group.
+    """
+
+    snapshot_date: date
+    make: str
+    model: str
+    year: Optional[int] = None
+    condition: Optional[str] = None       # used | brand_new | reconditioned
+
+    avg_price: float
+    min_price: float
+    max_price: float
+    listing_count: int
+
     captured_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
     class Settings:
         name = "price_snapshots"
-        indexes = ["listing_id", "captured_at"]
+        indexes = [
+            [("snapshot_date", -1), ("make", 1), ("model", 1), ("year", 1), ("condition", 1)],
+            [("make", 1), ("model", 1)],
+        ]
