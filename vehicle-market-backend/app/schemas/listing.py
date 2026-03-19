@@ -29,6 +29,7 @@ class ListingResponse(ListingBase):
     model: str | None = None
     condition: str | None = None
     category: str | None = None
+    posted_date: str | None = None
     created_at: datetime | None = None
 
     class Config:
