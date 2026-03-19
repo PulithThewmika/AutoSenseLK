@@ -160,6 +160,56 @@ Return monthly price trends for a make/model over a specified number of months.
 
 ---
 
+### `GET /api/v1/analytics/summary`
+
+Return overall market statistics including total listings, average price, and counts of unique makes/models.
+
+---
+
+### `GET /api/v1/analytics/depreciation`
+
+Return price-vs-year depreciation curve.
+
+---
+
+### `GET /api/v1/analytics/mileage`
+
+Return price-vs-mileage curve bucketed by 25,000 km bands.
+
+---
+
+### `GET /api/v1/analytics/daily`
+
+Return the latest market-wide daily analytics snapshot.
+
+---
+
+### `GET /api/v1/analytics/daily/brands`
+
+Return the latest daily snapshot for every brand.
+
+---
+
+### `GET /api/v1/analytics/daily/brand/{brand}`
+
+Return the latest daily snapshot for a specific brand (with condition breakdown).
+
+---
+
+### `GET /api/v1/analytics/daily/history`
+
+Return historical daily analytics snapshots.
+
+**Query Parameters:**
+
+| Parameter | Type | Default | Description |
+|---|---|---|---|
+| `days` | `int` | `30` | Number of days |
+| `scope` | `string` | `"market"` | `"market"`, `"brand"`, or `"brand_condition"` |
+| `brand` | `string` | `null` | Filter by brand (optional) |
+
+---
+
 ## Deal Scoring
 
 ### `GET /api/v1/deals/score`
