@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Line } from 'react-chartjs-2';
-import { BRANDS } from '../data/mockData';
+import { BRANDS } from '../../data/mockData';
 
 interface BrandsTabProps {
   isDark: boolean;

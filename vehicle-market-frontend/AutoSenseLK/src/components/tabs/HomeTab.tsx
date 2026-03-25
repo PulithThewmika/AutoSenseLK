@@ -11,7 +11,7 @@ import {
   Legend,
 } from 'chart.js';
 import { Line } from 'react-chartjs-2';
-import { CD, TICKERS } from '../data/mockData';
+import { CD, TICKERS } from '../../data/mockData';
 
 ChartJS.register(
   CategoryScale,

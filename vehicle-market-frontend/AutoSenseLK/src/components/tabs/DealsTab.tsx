@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Line } from 'react-chartjs-2';
-import { MODELS_BY_MAKE, MARKET_AVG, HISTORY } from '../data/mockData';
+import { MODELS_BY_MAKE, MARKET_AVG, HISTORY } from '../../data/mockData';
 
 interface DealsTabProps {
   isDark: boolean;

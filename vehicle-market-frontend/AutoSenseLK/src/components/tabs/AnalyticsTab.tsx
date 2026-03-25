@@ -12,7 +12,7 @@ import {
   Legend
 } from 'chart.js';
 import { Bar, Doughnut, Line } from 'react-chartjs-2';
-import { DISTRICTS } from '../data/mockData';
+import { DISTRICTS } from '../../data/mockData';
 
 ChartJS.register(
   CategoryScale,
