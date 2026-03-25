@@ -19,7 +19,7 @@ export function BrandsTab({ isDark }: BrandsTabProps) {
       const logos: any = { Toyota:'🚗', Honda:'🚙', BMW:'🏎', Mercedes:'⭐', Nissan:'🔵', Suzuki:'🟡' };
       const cats: any = { Toyota:'japanese', Honda:'japanese', BMW:'european', Mercedes:'european', Nissan:'japanese', Suzuki:'japanese' };
       
-      const arr = Array.isArray(res) ? res : res.data || Object.values(res);
+      const arr = res.brands ? res.brands : (Array.isArray(res) ? res : res.data || []);
       const mapped = arr.map((i: any) => ({
          name: i.brand,
          logo: logos[i.brand] || '🚘',
