@@ -2,7 +2,7 @@ import axios from 'axios';
 
 const API_BASE = import.meta.env.DEV
   ? 'http://127.0.0.1:8000/api/v1'
-  : (import.meta.env.REACT_APP_API_URL || 'http://127.0.0.1:8000/api/v1');
+  : (import.meta.env.REACT_APP_API_URL + '/api/v1' || 'http://127.0.0.1:8000/api/v1');
 
 export const api = axios.create({
   baseURL: API_BASE,
@@ -17,9 +17,9 @@ export const getTrends = (make?: string, model?: string, months: number = 12) =>
   if (model) url += `&model=${encodeURIComponent(model)}`;
   return api.get(url).then(res => res.data);
 };
-export const getListings = (page: number = 1, size: number = 20) => 
+export const getListings = (page: number = 1, size: number = 20) =>
   api.get(`/listings/?page=${page}&size=${size}`).then(res => res.data);
-export const getAvgPrice = (make: string, model: string) => 
+export const getAvgPrice = (make: string, model: string) =>
   api.get(`/analytics/avg-price?make=${encodeURIComponent(make)}&model=${encodeURIComponent(model)}`).then(res => res.data);
 export const getDepreciation = (make?: string, model?: string) => {
   let url = '/analytics/depreciation';
