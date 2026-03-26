@@ -1,8 +1,6 @@
 import axios from 'axios';
 
-const API_BASE = import.meta.env.DEV
-  ? 'http://127.0.0.1:8000/api/v1' // local dev backend
-  : (import.meta.env.VITE_API_URL ? import.meta.env.VITE_API_URL + '/api/v1/' : 'http://127.0.0.1:8000/api/v1');
+const API_BASE = import.meta.env.VITE_API_URL + '/api/v1';
 
 export const api = axios.create({
   baseURL: API_BASE,
