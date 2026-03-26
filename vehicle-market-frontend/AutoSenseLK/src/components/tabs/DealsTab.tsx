@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { Line } from 'react-chartjs-2';
-import { MODELS_BY_MAKE, MARKET_AVG, HISTORY } from '../../data/mockData';
+import { getMakes, getModels, getAvgPrice, getTrends } from '../../services/api';
 
 interface DealsTabProps {
   isDark: boolean;
@@ -12,17 +12,37 @@ export function DealsTab({ isDark }: DealsTabProps) {
   const [year, setYear] = useState('');
   const [price, setPrice] = useState('');
 
+  const [makesList, setMakesList] = useState<string[]>([]);
   const [modelsList, setModelsList] = useState<string[]>([]);
   const [recentScores, setRecentScores] = useState<any[]>([]);
   const [currentResult, setCurrentResult] = useState<any | null>(null);
 
   useEffect(() => {
-    if (make && MODELS_BY_MAKE[make]) setModelsList(MODELS_BY_MAKE[make]);
-    else setModelsList([]);
+    getMakes().then(res => {
+      // API returns { makes: [{ name: "Toyota", slug: "toyota" }, ...], total: 56 }
+      if (res && res.makes) {
+        setMakesList(res.makes.map((m: any) => m.name));
+      }
+    }).catch(console.error);
+  }, []);
+
+  useEffect(() => {
+    if (make) {
+      // Find slug for make (API expects slug usually, or we pass the string)
+      getModels(make.toLowerCase()).then(res => {
+         if(res && res.models) {
+           setModelsList(res.models.map((m: any) => m.name));
+         } else {
+           setModelsList([]);
+         }
+      }).catch(() => setModelsList([]));
+    } else {
+      setModelsList([]);
+    }
     setModel('');
   }, [make]);
 
-  const handleScore = () => {
+  const handleScore = async () => {
     const y = parseInt(year) || 0;
     const p = parseInt(price) || 0;
 
@@ -31,35 +51,50 @@ export function DealsTab({ isDark }: DealsTabProps) {
     if (y < 2000 || y > 2025) { alert('Please enter a valid year (2000–2025).'); return; }
     if (p < 100000) { alert('Please enter a valid listed price (Rs.).'); return; }
 
-    const key = `${make}_${model}`;
-    const mAvgK = MARKET_AVG[key] || 7000;
-    const mAvg = mAvgK * 1000;
-    const ratio = p / mAvg;
+    try {
+      const avgRes = await getAvgPrice(make, model);
+      if (!avgRes || !avgRes.avg_price) {
+        alert('Not enough market data to score this model currently.');
+        return;
+      }
 
-    let label, cls, col;
-    if (ratio < 0.85) { label = 'Good deal'; cls = 'db-g'; col = 'var(--green)'; }
-    else if (ratio <= 1.15) { label = 'Fair price'; cls = 'db-f'; col = 'var(--yellow)'; }
-    else { label = 'Overpriced'; cls = 'db-o'; col = 'var(--orange)'; }
+      const mAvg = avgRes.avg_price;
+      const sampleCount = avgRes.sample_count || 10;
+      const ratio = p / mAvg;
 
-    const diff = Math.abs(mAvg - p);
-    const pct = Math.abs((ratio - 1) * 100).toFixed(1);
-    const barW = Math.min(90, Math.max(8, ratio * 55));
+      let label, cls, col;
+      if (ratio < 0.85) { label = 'Good deal'; cls = 'db-g'; col = 'var(--green)'; }
+      else if (ratio <= 1.15) { label = 'Fair price'; cls = 'db-f'; col = 'var(--yellow)'; }
+      else { label = 'Overpriced'; cls = 'db-o'; col = 'var(--orange)'; }
 
-    const hist = HISTORY[key] || HISTORY['Toyota_Aqua'];
-    
-    const result = {
-      make, model, year: y, price: p, label, cls, col, mAvg, diff, pct, barW, ratio, hist
-    };
+      const diff = Math.abs(mAvg - p);
+      const pct = Math.abs((ratio - 1) * 100).toFixed(1);
+      const barW = Math.min(90, Math.max(8, ratio * 55));
 
-    setCurrentResult(result);
-    setRecentScores(prev => {
-      const updated = [{ make, model, year: y, price: p, label, cls }, ...prev];
-      return updated.slice(0, 4);
-    });
+      const trendsRes = await getTrends(make, model, 12).catch(() => null);
+      let hist = [6800, 6950, 7100, 7050, 7300, 7420, 7350, 7500, 7420, 7550, 7600, 7680];
+      if (trendsRes && trendsRes.history) {
+        const sortedKeys = Object.keys(trendsRes.history).sort();
+        hist = sortedKeys.map(k => trendsRes.history[k] / 1000); // Scale down to K
+      }
+      
+      const result = {
+        make, model, year: y, price: p, label, cls, col, mAvg, diff, pct, barW, ratio, hist, sampleCount
+      };
 
-    setTimeout(() => {
-      document.getElementById('dealCard')?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-    }, 50);
+      setCurrentResult(result);
+      setRecentScores(prev => {
+        const updated = [{ make, model, year: y, price: p, label, cls }, ...prev];
+        return updated.slice(0, 4);
+      });
+
+      setTimeout(() => {
+        document.getElementById('dealCard')?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      }, 50);
+
+    } catch (err) {
+      alert('Error fetching market average. Please try again.');
+    }
   };
 
   const chartOpts: any = {
@@ -68,11 +103,20 @@ export function DealsTab({ isDark }: DealsTabProps) {
     scales: { x: { display: false }, y: { display: false } }
   };
 
-  const currentHist = currentResult ? currentResult.hist : [6800, 6950, 7100, 7050, 7300, 7420, 7350, 7500, 7420, 7550, 7600, 7680];
-  const currentPriceHist = currentResult ? Array(12).fill(currentResult.price / 1000) : Array(12).fill(6750);
+  let currentHist = [6800, 6950, 7100, 7050, 7300, 7420, 7350, 7500, 7420, 7550, 7600, 7680];
+  let currentPriceHist = Array(12).fill(6750);
+  let chartLabels = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  
+  if (currentResult) {
+    currentHist = currentResult.hist;
+    if (currentHist.length > 0) {
+      currentPriceHist = Array(currentHist.length).fill(currentResult.price / 1000);
+      chartLabels = Array(currentHist.length).fill('');
+    }
+  }
 
   const chartData = {
-    labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
+    labels: chartLabels,
     datasets: [
       {
         data: currentHist,
@@ -114,11 +158,9 @@ export function DealsTab({ isDark }: DealsTabProps) {
             <div className="score-row">
               <select className="score-input" value={make} onChange={e => setMake(e.target.value)}>
                 <option value="">Select Make</option>
-                <option>Toyota</option><option>Honda</option><option>Suzuki</option>
-                <option>Nissan</option><option>Mitsubishi</option><option>BMW</option>
-                <option>Mercedes</option><option>Mazda</option><option>Perodua</option>
+                {makesList.map(m => <option key={m} value={m}>{m}</option>)}
               </select>
-              <select className="score-input" value={model} onChange={e => setModel(e.target.value)}>
+              <select className="score-input" value={model} onChange={e => setModel(e.target.value)} disabled={!make}>
                 <option value="">Select Model</option>
                 {modelsList.map(m => <option key={m} value={m}>{m}</option>)}
               </select>
@@ -178,7 +220,7 @@ export function DealsTab({ isDark }: DealsTabProps) {
                       {currentResult.ratio < 1 ? '−' : '+'}{currentResult.pct}%
                     </div>
                   </div>
-                  <div className="ds"><div className="ds-l">Similar listings</div><div className="ds-v">{Math.floor(Math.random() * 50 + 10)}</div></div>
+                  <div className="ds"><div className="ds-l">Similar listings</div><div className="ds-v">{currentResult.sampleCount}</div></div>
                 </div>
                 <div className="mini-chart-wrap">
                   <div className="mini-chart-title">12-month history · {currentResult.make} {currentResult.model}</div>
