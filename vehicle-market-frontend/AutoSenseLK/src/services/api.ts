@@ -1,5 +1,6 @@
 import axios from 'axios';
 
+//added /api/v1 to the API_BASE
 const API_BASE = import.meta.env.DEV
   ? 'http://127.0.0.1:8000/api/v1'
   : (import.meta.env.REACT_APP_API_URL + '/api/v1' || 'http://127.0.0.1:8000/api/v1');
