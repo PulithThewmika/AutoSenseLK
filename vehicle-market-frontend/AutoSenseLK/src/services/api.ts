@@ -2,7 +2,7 @@ import axios from 'axios';
 
 const API_BASE = import.meta.env.DEV
   ? 'http://127.0.0.1:8000/api/v1'
-  : (import.meta.env.REACT_APP_API_URL + '/api/v1' || 'http://127.0.0.1:8000/api/v1');
+  : (import.meta.env.REACT_APP_API_URL + '/api/v1/' || 'http://127.0.0.1:8000/api/v1');
 
 export const api = axios.create({
   baseURL: API_BASE,
