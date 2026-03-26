@@ -28,6 +28,7 @@ jobs:
       - name: Create deployment package
         working-directory: vehicle-market-backend
         run: |
+          chmod +x setup.sh
           zip -r deploy.zip . -x "*.git*" -x "venv/*" -x "antenv/*" -x "*/__pycache__/*"
 
       - name: Deploy to Elastic Beanstalk
