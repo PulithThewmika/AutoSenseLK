@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import Chart from 'chart.js/auto';
 import { sparkDs, sparkOpts, baseOpts, lineDs, last30Labels, genSeries, rand, randFloat } from '../utils/ChartHelpers';
 
