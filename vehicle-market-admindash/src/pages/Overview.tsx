@@ -1,11 +1,16 @@
 import { useEffect, useRef, useState } from 'react';
 import Chart from 'chart.js/auto';
 import { sparkDs, sparkOpts, baseOpts, lineDs, last30Labels, genSeries, rand, randFloat } from '../utils/ChartHelpers';
+import { getMarketSummary, getHealth, getScrapeStatus } from '../services/api';
 
 export function Overview() {
   const [rpm, setRpm] = useState(184);
   const [resp, setResp] = useState(108);
   const [errRate, setErrRate] = useState(0.8);
+
+  const [marketStats, setMarketStats] = useState({ total_listings: 0, makes_count: 0, models_count: 0 });
+  const [apiStatus, setApiStatus] = useState('Checking...');
+  const [scrapeState, setScrapeState] = useState<any>({ status: 'no_runs_yet' });
 
   const sparkListingsRef = useRef<HTMLCanvasElement>(null);
   const sparkRpmRef = useRef<HTMLCanvasElement>(null);
@@ -17,6 +22,11 @@ export function Overview() {
   const chartsRef = useRef<any>({});
 
   useEffect(() => {
+    // Fetch real data
+    getMarketSummary().then(data => setMarketStats(data)).catch(console.error);
+    getHealth().then(() => setApiStatus('● Online')).catch(() => setApiStatus('Offline'));
+    getScrapeStatus().then(data => setScrapeState(data)).catch(console.error);
+
     // Initialize Sparklines
     if (sparkListingsRef.current) {
       chartsRef.current.sparkListings = new Chart(sparkListingsRef.current, {
@@ -108,8 +118,8 @@ export function Overview() {
         <div className="kpi">
           <div className="kpi-icon">🕷</div>
           <div className="kpi-label">Total Listings</div>
-          <div className="kpi-val">24,810</div>
-          <div className="kpi-delta up">↑ 412 today</div>
+          <div className="kpi-val">{marketStats.total_listings.toLocaleString()}</div>
+          <div className="kpi-delta up">{marketStats.makes_count} makes / {marketStats.models_count} models</div>
           <div className="kpi-spark"><canvas ref={sparkListingsRef}></canvas></div>
         </div>
         <div className="kpi">
