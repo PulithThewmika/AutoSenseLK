@@ -2,6 +2,11 @@
 FastAPI application factory and router mounting.
 """
 
+import warnings
+warnings.filterwarnings("ignore", category=Warning, module="pymongo")
+warnings.filterwarnings("ignore", category=Warning, module="cryptography")
+
+import asyncio
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
@@ -21,7 +26,10 @@ async def lifespan(app: FastAPI):
     """Startup / shutdown lifecycle — initialise MongoDB on boot."""
     await init_db()
     await seed_makes_and_models()   # upsert brand/model registry into DB
-    yield
+    try:
+        yield
+    except asyncio.CancelledError:
+        pass
 
 
 def create_app() -> FastAPI:
