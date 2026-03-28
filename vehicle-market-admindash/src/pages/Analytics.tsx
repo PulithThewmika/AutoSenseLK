@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef } from 'react';
 import Chart from 'chart.js/auto';
 import { baseOpts, lineDs, barDs, last30Labels, genSeries } from '../utils/ChartHelpers';
 import { getBrandAnalytics, getDailyHistory } from '../services/api';
