@@ -1,6 +1,6 @@
-import { ChartOptions, ChartDataset } from 'chart.js';
+import type { ChartOptions } from 'chart.js';
 
-export const baseOpts = (yFmt: (val: number) => string, showLegend: boolean): ChartOptions<any> => ({
+export const baseOpts = (yFmt: (val: number) => string = (v) => String(v), showLegend: boolean = false): ChartOptions<any> => ({
   responsive: true,
   maintainAspectRatio: false,
   interaction: { mode: 'index', intersect: false },
