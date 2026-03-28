@@ -171,11 +171,11 @@ export function Overview() {
           <table className="status-table">
             <thead><tr><th>Service</th><th>Status</th><th>Uptime</th><th>Latency</th></tr></thead>
             <tbody>
-              <tr><td>FastAPI</td><td><span className="pill ok">● Online</span></td><td>14d 6h</td><td>2ms</td></tr>
-              <tr><td>MongoDB</td><td><span className="pill ok">● Connected</span></td><td>14d 6h</td><td>4ms</td></tr>
-              <tr><td>Celery Worker</td><td><span className="pill ok">● Running</span></td><td>2d 18h</td><td>—</td></tr>
-              <tr><td>Redis</td><td><span className="pill warn">⚠ High mem</span></td><td>14d 6h</td><td>1ms</td></tr>
-              <tr><td>Playwright</td><td><span className="pill ok">● Ready</span></td><td>2d 18h</td><td>—</td></tr>
+              <tr><td>FastAPI</td><td><span className={`pill ${apiStatus === '● Online' ? 'ok' : 'err'}`}>{apiStatus}</span></td><td>-</td><td>2ms</td></tr>
+              <tr><td>MongoDB</td><td><span className="pill ok">● Connected</span></td><td>-</td><td>4ms</td></tr>
+              <tr><td>Celery Worker</td><td><span className="pill ok">● Running</span></td><td>-</td><td>—</td></tr>
+              <tr><td>Redis</td><td><span className="pill warn">⚠ High mem</span></td><td>-</td><td>1ms</td></tr>
+              <tr><td>Playwright</td><td><span className="pill ok">● Ready</span></td><td>-</td><td>—</td></tr>
             </tbody>
           </table>
         </div>
@@ -185,13 +185,9 @@ export function Overview() {
             <div className="card-badge cb-green">LAST CYCLE</div>
           </div>
           <table className="status-table">
-            <thead><tr><th>Stage</th><th>Status</th><th>Count</th><th>Duration</th></tr></thead>
+            <thead><tr><th>Stage</th><th>Status</th><th>Target</th><th>Error</th></tr></thead>
             <tbody>
-              <tr><td>Crawl</td><td><span className="pill ok">✓ Done</span></td><td>28,440</td><td>18m 42s</td></tr>
-              <tr><td>Parse</td><td><span className="pill ok">✓ Done</span></td><td>28,219</td><td>4m 12s</td></tr>
-              <tr><td>Clean</td><td><span className="pill ok">✓ Done</span></td><td>26,810</td><td>1m 08s</td></tr>
-              <tr><td>Dedup</td><td><span className="pill ok">✓ Done</span></td><td>+412 new</td><td>23s</td></tr>
-              <tr><td>Analytics</td><td><span className="pill ok">✓ Done</span></td><td>4 levels</td><td>2m 31s</td></tr>
+              <tr><td>Last Scrape</td><td><span className={`pill ${scrapeState.status === 'failed' ? 'err' : 'ok'}`}>{scrapeState.status}</span></td><td>{scrapeState.type || 'N/A'}</td><td>{scrapeState.error || 'None'}</td></tr>
             </tbody>
           </table>
         </div>
