@@ -10,8 +10,6 @@ export function Analytics() {
   const chartGeoRef = useRef<HTMLCanvasElement>(null);
   const chartsRef = useRef<any>({});
   
-  const [dataLoaded, setDataLoaded] = useState(false);
-
   useEffect(() => {
     async function loadData() {
       try {
@@ -94,7 +92,6 @@ export function Analytics() {
             }
           });
         }
-        setDataLoaded(true);
 
       } catch (err) {
         console.error(err);
