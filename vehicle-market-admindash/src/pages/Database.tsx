@@ -1,6 +1,6 @@
-import React, { useEffect, useRef } from 'react';
+import { useEffect, useRef } from 'react';
 import Chart from 'chart.js/auto';
-import { baseOpts, lineDs, last30Labels, genSeries, rand } from '../utils/ChartHelpers';
+import { baseOpts, lineDs, last30Labels, genSeries } from '../utils/ChartHelpers';
 
 export function Database() {
   const chartDbQueryRef = useRef<HTMLCanvasElement>(null);
