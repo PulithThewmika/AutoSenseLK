@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const API_BASE = 'http://autosenselk-env.eba-qeeizkpt.eu-north-1.elasticbeanstalk.com/api/v1';
+const API_BASE = 'http://autosenselk-env.eba-qeeizkpt.eu-north-1.elasticbeanstalk.com/api/v1/';
 
 export const api = axios.create({
   baseURL: API_BASE,
