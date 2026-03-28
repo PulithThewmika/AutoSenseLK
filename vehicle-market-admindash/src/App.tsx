@@ -47,7 +47,7 @@ export function App() {
     <>
       <Sidebar activeTab={activeTab} setActiveTab={setActiveTab} />
       <div className="main-content">
-        <Topbar isDark={isDark} toggleTheme={toggleTheme} />
+        <Topbar title="Dashboard" isDark={isDark} toggleTheme={toggleTheme} />
         {renderContent()}
       </div>
     </>
