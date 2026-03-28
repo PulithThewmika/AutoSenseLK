@@ -1,16 +1,19 @@
 import { useEffect, useRef, useState } from 'react';
 import Chart from 'chart.js/auto';
-import { sparkDs, sparkOpts, baseOpts, lineDs, last30Labels, genSeries, rand, randFloat } from '../utils/ChartHelpers';
-import { getMarketSummary, getHealth, getScrapeStatus } from '../services/api';
+import { sparkDs, sparkOpts, baseOpts, lineDs, last30Labels,  } from '../utils/ChartHelpers';
+import { getMarketSummary, getHealth, getScrapeStatus, triggerFullScrape, triggerBrandScrape, getAvailableBrands } from '../services/api'; 
 
 export function Overview() {
-  const [rpm, setRpm] = useState(184);
-  const [resp, setResp] = useState(108);
-  const [errRate, setErrRate] = useState(0.8);
+  const rpm = 0;
+  const resp = 0;
+  const errRate = 0;
 
   const [marketStats, setMarketStats] = useState({ total_listings: 0, makes_count: 0, models_count: 0 });
   const [apiStatus, setApiStatus] = useState('Checking...');
-  const [scrapeState, setScrapeState] = useState<any>({ status: 'no_runs_yet' });
+  const [scrapeState, setScrapeState] = useState<any>({ cycle_status: 'no_runs_yet' });
+  const [brands, setBrands] = useState<string[]>([]);
+  const [selectedBrand, setSelectedBrand] = useState<string>('');
+  const [triggering, setTriggering] = useState(false);
 
   const sparkListingsRef = useRef<HTMLCanvasElement>(null);
   const sparkRpmRef = useRef<HTMLCanvasElement>(null);
@@ -21,127 +24,146 @@ export function Overview() {
 
   const chartsRef = useRef<any>({});
 
-  useEffect(() => {
-    // Fetch real data
-    getMarketSummary().then(data => setMarketStats(data)).catch(console.error);
-    getHealth().then(() => setApiStatus('● Online')).catch(() => setApiStatus('Offline'));
-    getScrapeStatus().then(data => setScrapeState(data)).catch(console.error);
+  const fetchData = async () => {
+    try {
+      const summary = await getMarketSummary();
+      setMarketStats(summary || { total_listings: 0, makes_count: 0, models_count: 0 });
+    } catch (e) {}
 
-    // Initialize Sparklines
+    try {
+      await getHealth();
+      setApiStatus('â— Online');
+    } catch (e) {
+      setApiStatus('Offline');
+    }
+
+    try {
+      const status = await getScrapeStatus();
+      if (status) setScrapeState(status);
+    } catch (e) {}
+
+    try {
+      const brandsData = await getAvailableBrands();
+      setBrands(brandsData.brands || []);
+    } catch (e) {}
+  };
+
+  useEffect(() => {
+    fetchData();
+    const intervalData = setInterval(fetchData, 10000);
+
+    // Initialize Sparklines (static empty or zeros for no mock data)
     if (sparkListingsRef.current) {
-      chartsRef.current.sparkListings = new Chart(sparkListingsRef.current, {
+      chartsRef.current.sparkListings = new Chart(sparkListingsRef.current, {   
         type: 'line',
-        data: { labels: Array(12).fill(''), datasets: [sparkDs([380,390,412,401,420,438,445,430,450,460,482,412], '0,184,217')] },
+        data: { labels: Array(12).fill(''), datasets: [sparkDs(Array(12).fill(0), '0,184,217')] },
         options: sparkOpts()
       });
     }
     if (sparkRpmRef.current) {
       chartsRef.current.sparkRpm = new Chart(sparkRpmRef.current, {
         type: 'line',
-        data: { labels: Array(12).fill(''), datasets: [sparkDs([140,155,168,172,165,180,184,190,178,184,192,184], '0,208,132')] },
+        data: { labels: Array(12).fill(''), datasets: [sparkDs(Array(12).fill(0), '0,208,132')] },
         options: sparkOpts()
       });
     }
     if (sparkRespRef.current) {
       chartsRef.current.sparkResp = new Chart(sparkRespRef.current, {
         type: 'line',
-        data: { labels: Array(12).fill(''), datasets: [sparkDs([125,118,122,115,120,112,108,115,110,106,110,108], '245,200,66')] },
+        data: { labels: Array(12).fill(''), datasets: [sparkDs(Array(12).fill(0), '245,200,66')] },
         options: sparkOpts()
       });
     }
     if (sparkErrRef.current) {
       chartsRef.current.sparkErr = new Chart(sparkErrRef.current, {
         type: 'line',
-        data: { labels: Array(12).fill(''), datasets: [sparkDs([0.4,0.5,0.6,0.4,0.5,0.7,0.6,0.9,1.0,0.8,0.8,0.8], '255,71,87')] },
+        data: { labels: Array(12).fill(''), datasets: [sparkDs(Array(12).fill(0), '255,71,87')] },
         options: sparkOpts()
       });
     }
 
-    // Main Charts
+    // Main Charts (static empty)
     const rpmLabels = last30Labels('m');
-    const rpmData = genSeries(30, 160, 28);
     if (overviewRpmRef.current) {
-      chartsRef.current.overviewRpm = new Chart(overviewRpmRef.current, {
+      chartsRef.current.overviewRpm = new Chart(overviewRpmRef.current, {       
         type: 'line',
-        data: { labels: rpmLabels, datasets: [lineDs('Req/min', rpmData, '0,184,217', true)] },
+        data: { labels: rpmLabels, datasets: [lineDs('Req/min', Array(30).fill(0), '0,184,217', true)] },
         options: baseOpts((v: number) => `${v}/m`, false)
       });
     }
 
-    const respData = genSeries(30, 110, 22);
     if (overviewRespRef.current) {
-      chartsRef.current.overviewResp = new Chart(overviewRespRef.current, {
+      chartsRef.current.overviewResp = new Chart(overviewRespRef.current, {     
         type: 'line',
-        data: { labels: rpmLabels, datasets: [lineDs('Avg ms', respData, '59,111,245', true)] },
+        data: { labels: rpmLabels, datasets: [lineDs('Avg ms', Array(30).fill(0), '59,111,245', true)] },
         options: baseOpts((v: number) => `${v}ms`, false)
       });
     }
 
-    // Interval for updates
-    const timer = setInterval(() => {
-      const newRpm = rand(160, 210);
-      const newResp = rand(95, 130);
-      const newErr = randFloat(0.4, 1.2);
-      
-      setRpm(newRpm);
-      setResp(newResp);
-      setErrRate(newErr);
-
-      const pushPoint = (chart: Chart, val: number, max: number = 30) => {
-        if (!chart) return;
-        chart.data.datasets[0].data.push(val as never);
-        if (chart.data.datasets[0].data.length > max) chart.data.datasets[0].data.shift();
-        if (chart.data.labels && chart.data.labels.length > 0) {
-          chart.data.labels.push('');
-          if (chart.data.labels.length > max) chart.data.labels.shift();
-        }
-        chart.update('none');
-      };
-
-      pushPoint(chartsRef.current.sparkRpm, newRpm, 12);
-      pushPoint(chartsRef.current.sparkResp, newResp, 12);
-      pushPoint(chartsRef.current.sparkErr, newErr, 12);
-      pushPoint(chartsRef.current.overviewRpm, newRpm);
-      pushPoint(chartsRef.current.overviewResp, newResp);
-
-    }, 2000);
-
     return () => {
-      clearInterval(timer);
-      Object.values(chartsRef.current).forEach((c: any) => c.destroy());
+      clearInterval(intervalData);
+      Object.values(chartsRef.current).forEach((c: any) => c.destroy());        
     };
   }, []);
+
+  const handleFullScrape = async () => {
+    if (triggering) return;
+    setTriggering(true);
+    try {
+      await triggerFullScrape();
+      await fetchData();
+      alert('Full scrape cycle triggered successfully.');
+    } catch (error) {
+      alert('Failed to trigger full scrape');
+    } finally {
+      setTriggering(false);
+    }
+  };
+
+  const handleBrandScrape = async () => {
+    if (triggering || !selectedBrand) return;
+    setTriggering(true);
+    try {
+      await triggerBrandScrape(selectedBrand);
+      await fetchData();
+      alert(`Scrape cycle for ${selectedBrand} triggered successfully.`);
+    } catch (error) {
+      alert(`Failed to trigger scrape for ${selectedBrand}`);
+    } finally {
+      setTriggering(false);
+    }
+  };
 
   return (
     <div className="page active view-fade-in">
       <div className="grid-4">
         <div className="kpi">
-          <div className="kpi-icon">🕷</div>
+          <div className="kpi-icon">ðŸ•·</div>
           <div className="kpi-label">Total Listings</div>
           <div className="kpi-val">{marketStats.total_listings.toLocaleString()}</div>
           <div className="kpi-delta up">{marketStats.makes_count} makes / {marketStats.models_count} models</div>
           <div className="kpi-spark"><canvas ref={sparkListingsRef}></canvas></div>
         </div>
         <div className="kpi">
-          <div className="kpi-icon">⚡</div>
+          <div className="kpi-icon">âš¡</div>
           <div className="kpi-label">API Req / min</div>
           <div className="kpi-val">{rpm}</div>
-          <div className="kpi-delta up">↑ 22% vs avg</div>
-          <div className="kpi-spark"><canvas ref={sparkRpmRef}></canvas></div>
+          <div className="kpi-delta up">â†‘ 0% vs avg</div>
+          <div className="kpi-spark"><canvas ref={sparkRpmRef}></canvas></div>  
         </div>
         <div className="kpi">
-          <div className="kpi-icon">⏱</div>
+          <div className="kpi-icon">â±</div>
           <div className="kpi-label">Avg Response</div>
           <div className="kpi-val">{resp}<span style={{fontSize:'14px',color:'var(--mu)'}}>ms</span></div>
-          <div className="kpi-delta up">↓ 12ms better</div>
-          <div className="kpi-spark"><canvas ref={sparkRespRef}></canvas></div>
+          <div className="kpi-delta up">â†“ 0ms better</div>
+          <div className="kpi-spark"><canvas ref={sparkRespRef}></canvas></div> 
         </div>
         <div className="kpi">
-          <div className="kpi-icon">❌</div>
+          <div className="kpi-icon">âŒ</div>
           <div className="kpi-label">Error Rate</div>
           <div className="kpi-val">{errRate.toFixed(1)}<span style={{fontSize:'14px',color:'var(--mu)'}}>%</span></div>
-          <div className="kpi-delta dn">↑ 0.2% spike</div>
-          <div className="kpi-spark"><canvas ref={sparkErrRef}></canvas></div>
+          <div className="kpi-delta dn">0.0% spike</div>
+          <div className="kpi-spark"><canvas ref={sparkErrRef}></canvas></div>  
         </div>
       </div>
 
@@ -162,7 +184,7 @@ export function Overview() {
         </div>
       </div>
 
-      <div className="grid-2">
+      <div className="grid-3">
         <div className="card">
           <div className="card-header">
             <div className="card-title">Service status</div>
@@ -171,23 +193,72 @@ export function Overview() {
           <table className="status-table">
             <thead><tr><th>Service</th><th>Status</th><th>Uptime</th><th>Latency</th></tr></thead>
             <tbody>
-              <tr><td>FastAPI</td><td><span className={`pill ${apiStatus === '● Online' ? 'ok' : 'err'}`}>{apiStatus}</span></td><td>-</td><td>2ms</td></tr>
-              <tr><td>MongoDB</td><td><span className="pill ok">● Connected</span></td><td>-</td><td>4ms</td></tr>
-              <tr><td>Celery Worker</td><td><span className="pill ok">● Running</span></td><td>-</td><td>—</td></tr>
-              <tr><td>Redis</td><td><span className="pill warn">⚠ High mem</span></td><td>-</td><td>1ms</td></tr>
-              <tr><td>Playwright</td><td><span className="pill ok">● Ready</span></td><td>-</td><td>—</td></tr>
+              <tr><td>FastAPI</td><td><span className={`pill ${apiStatus === 'â— Online' ? 'ok' : 'err'}`}>{apiStatus}</span></td><td>-</td><td>-</td></tr>   
+              <tr><td>MongoDB</td><td><span className="pill ok">â— Connected</span></td><td>-</td><td>-</td></tr>
+              <tr><td>Celery Worker</td><td><span className="pill ok">â— Running</span></td><td>-</td><td>-</td></tr>
+              <tr><td>Redis</td><td><span className="pill ok">â— Normal</span></td><td>-</td><td>-</td></tr>
+              <tr><td>Playwright</td><td><span className="pill ok">â— Ready</span></td><td>-</td><td>-</td></tr>
             </tbody>
           </table>
         </div>
+        
+        <div className="card">
+          <div className="card-header">
+            <div className="card-title">Scraper Controls</div>
+            <div className="card-badge cb-cyan">OPERATIONS</div>
+          </div>
+          <div className="card-body" style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            <button 
+              className="btn btn-primary" 
+              onClick={handleFullScrape} 
+              disabled={triggering}
+              style={{ padding: '8px 16px', background: 'var(--brand)', color: '#fff', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
+            >
+              {triggering ? 'Triggering...' : 'Trigger Full Scrape Cycle'}
+            </button>
+            
+            <div style={{ display: 'flex', gap: '10px' }}>
+              <select 
+                 value={selectedBrand} 
+                 onChange={e => setSelectedBrand(e.target.value)}
+                 style={{ flex: 1, padding: '8px', borderRadius: '4px', border: '1px solid var(--border)', backgroundColor: 'var(--bg)', color: 'var(--fg)' }}
+              >
+                 <option value="">Select a Brand</option>
+                 {brands.map(b => (
+                   <option key={b} value={b}>{b}</option>
+                 ))}
+              </select>
+              <button 
+                 className="btn btn-secondary" 
+                 onClick={handleBrandScrape}
+                 disabled={triggering || !selectedBrand}
+                 style={{ padding: '8px 16px', background: 'var(--panel)', border: '1px solid var(--border)', color: 'var(--fg)', borderRadius: '4px', cursor: 'pointer' }}
+              >
+                 Scrape Brand
+              </button>
+            </div>
+          </div>
+        </div>
+
         <div className="card">
           <div className="card-header">
             <div className="card-title">Scraper pipeline</div>
             <div className="card-badge cb-green">LAST CYCLE</div>
           </div>
           <table className="status-table">
-            <thead><tr><th>Stage</th><th>Status</th><th>Target</th><th>Error</th></tr></thead>
+            <thead><tr><th>Stage</th><th>Target</th><th>Error / Output</th></tr></thead>
             <tbody>
-              <tr><td>Last Scrape</td><td><span className={`pill ${scrapeState.status === 'failed' ? 'err' : 'ok'}`}>{scrapeState.status}</span></td><td>{scrapeState.type || 'N/A'}</td><td>{scrapeState.error || 'None'}</td></tr>
+              {scrapeState.status !== 'no_runs_yet' ? (
+              <tr>
+                <td><span className={`pill ${scrapeState.status === 'running' || scrapeState.status === 'success' ? 'ok' : 'err'}`}>{scrapeState.status}</span></td>
+                <td>{scrapeState.brand || scrapeState.type || 'All'}</td>
+                <td style={{ maxWidth: '100px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={scrapeState.error || scrapeState.message || 'None'}>
+                  {scrapeState.error || scrapeState.message || 'None'}
+                </td>
+              </tr>
+              ) : (
+                <tr><td colSpan={3} style={{ textAlign: 'center', padding: '10px' }}>No recent runs</td></tr>
+              )}
             </tbody>
           </table>
         </div>
