@@ -13,6 +13,7 @@ from app.core.database import init_db
 from app.scraper.seeder import seed_makes_and_models
 from app.api.v1 import listings, analytics, deals, makes, search
 from app.api.v1 import scrape
+from app.api.v1 import logs
 
 
 @asynccontextmanager
@@ -51,6 +52,7 @@ def create_app() -> FastAPI:
     app.include_router(makes.router, prefix=api_prefix)
     app.include_router(search.router, prefix=api_prefix)
     app.include_router(scrape.router, prefix=api_prefix)
+    app.include_router(logs.router, prefix=api_prefix)
 
     @app.get("/health", tags=["health"])
     async def health_check():
@@ -60,3 +62,4 @@ def create_app() -> FastAPI:
 
 
 app = create_app()
+# 

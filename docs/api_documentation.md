@@ -15,8 +15,7 @@
 - [Makes & Models](#makes--models)
 - [Search](#search)
 - [Scraper](#scraper)
-- [Schemas Reference](#schemas-reference)
-
+  - [Logs](#logs)
 ---
 
 ## Health Check
@@ -346,6 +345,13 @@ Return the result of the last scrape run.
 
 ---
 
+## Logs
+
+### WebSocket `/api/v1/logs/stream`
+Stream logs from the backend directly to the client. Real-time updates push `{"message": "log trace", "level": "INFO|WARNING|ERROR"}` payload directly to any connected `WebSocket` subscribers instance.
+
+---
+
 ## Schemas Reference
 
 ### Listing Schema
@@ -462,3 +468,4 @@ Return the result of the last scrape run.
 | `POST` | `/api/v1/scrape/trigger/brand/{brand}` | scrape | Trigger single-brand scrape |
 | `GET` | `/api/v1/scrape/status` | scrape | Last scrape result |
 | `GET` | `/api/v1/scrape/brands` | scrape | List supported brands |
+| `WS` | `/api/v1/logs/stream` | logs | Stream real-time backend logs via WebSocket |

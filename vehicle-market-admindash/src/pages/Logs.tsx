@@ -1,27 +1,62 @@
-import { useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
+
+type LogEntry = {
+  ts: string;
+  lvl: string;
+  sys: string;
+  msg: string;
+  badge: string;
+};
 
 export function Logs() {
-  const [logs] = useState([
-    { ts: "13:24:02", lvl: "ERR", sys: "Backend", msg: "Timeout connecting to secondary node at 10.4.22.4", badge: "err" },
-    { ts: "13:23:41", lvl: "WRN", sys: "Scraper", msg: "Rate limit detected from riyasewana. Backing off 60s.", badge: "warn" },
-    { ts: "13:21:05", lvl: "INF", sys: "Worker", msg: "Task 'train_predictive_model' completed in 184s", badge: "ok" },
-    { ts: "13:19:12", lvl: "INF", sys: "API", msg: "New admin session started via OAuth2", badge: "ok" },
-    { ts: "13:18:44", lvl: "ERR", sys: "Scraper", msg: "Failed to parse listing id=8812 - Missing price node", badge: "err" },
-    { ts: "13:15:00", lvl: "INF", sys: "Cron", msg: "Scheduled 'db-backup-daily' triggered", badge: "ok" },
-    { ts: "13:10:22", lvl: "WRN", sys: "API", msg: "High traffic: 284 req/s on /deals/recommended", badge: "warn" },
-    { ts: "13:08:15", lvl: "INF", sys: "Worker", msg: "Scraped 1,440 items from autolanka page 12", badge: "ok" },
-    { ts: "13:05:01", lvl: "INF", sys: "System", msg: "Memory optimized. Recovered 412MB", badge: "ok" },
-    { ts: "13:02:18", lvl: "INF", sys: "API", msg: "User agent blocked - detected bot signature", badge: "ok" },
-  ]);
+  const [logs, setLogs] = useState<LogEntry[]>([]);
+  const MAX_LOGS = 100;
+  const wsRef = useRef<WebSocket | null>(null);
+
+  useEffect(() => {
+    // Determine WS URL based on current host if dynamic, or fixed for dev
+    const wsUrl = 'ws://localhost:8000/api/v1/logs/stream';
+    const ws = new WebSocket(wsUrl);
+    wsRef.current = ws;
+
+    ws.onmessage = (event) => {
+      try {
+        const logData: LogEntry = JSON.parse(event.data);
+        setLogs(prevLogs => {
+          const newLogs = [logData, ...prevLogs];
+          if (newLogs.length > MAX_LOGS) {
+            return newLogs.slice(0, MAX_LOGS);
+          }
+          return newLogs;
+        });
+      } catch (e) {
+        console.error("Failed to parse log message", e);
+      }
+    };
+
+    ws.onerror = (error) => {
+      console.error("WebSocket error", error);
+    };
+
+    ws.onclose = () => {
+      console.log("WebSocket closed");
+    };
+
+    return () => {
+      if (ws.readyState === 1) {
+        ws.close();
+      }
+    };
+  }, []);
 
   return (
     <div className="page active view-fade-in">
       <div className="card">
         <div className="card-header">
           <div className="card-title">Realtime System Stream</div>
-          <div className="card-badge cb-green">TAIL • 100</div>
+          <div className="card-badge cb-green">TAIL • {MAX_LOGS}</div>
         </div>
-        
+
         <table className="logs-table mb16">
           <thead>
             <tr>
@@ -35,28 +70,20 @@ export function Logs() {
             {logs.map((L, i) => (
               <tr key={i}>
                 <td style={{color: 'var(--mu)', fontFamily: 'monospace'}}>{L.ts}</td>
-                <td><span className={`pill ${L.badge}`}>{L.lvl}</span></td>
+                <td><span className={`pill ${L.badge}`}>{L.lvl}</span></td>     
                 <td>{L.sys}</td>
                 <td style={{color: L.badge === 'err' ? 'var(--red)' : ''}}>{L.msg}</td>
               </tr>
             ))}
+            {logs.length === 0 && (
+              <tr>
+                <td colSpan={4} style={{ textAlign: 'center', padding: '20px', color: 'var(--mu)' }}>
+                  Awaiting logs...
+                </td>
+              </tr>
+            )}
           </tbody>
         </table>
-        
-        <div style={{display: 'flex', justifyContent: 'center'}}>
-          <button style={{
-            background: 'var(--border)', 
-            border: 'none', 
-            borderRadius: '4px',
-            color: 'var(--text)', 
-            padding: '6px 16px', 
-            cursor: 'pointer',
-            fontSize: '12px', 
-            fontWeight: 600
-          }}>
-            LOAD OLDER LOGS ↓
-          </button>
-        </div>
       </div>
     </div>
   );
