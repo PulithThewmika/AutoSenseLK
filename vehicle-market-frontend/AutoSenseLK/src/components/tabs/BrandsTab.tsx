@@ -1,6 +1,38 @@
 import { useState, useEffect } from 'react';
+import type { ChartData, ChartOptions, ScriptableContext, TooltipItem } from 'chart.js';
 import { Line } from 'react-chartjs-2';
 import { getDailyBrands, getDailyHistory } from '../../services/api';
+
+const getGradient = (ctx: CanvasRenderingContext2D) => {
+  const gr = ctx.createLinearGradient(0, 0, 0, 130);
+  gr.addColorStop(0, 'rgba(0,184,217,0.15)');
+  gr.addColorStop(1, 'rgba(0,184,217,0)');
+  return gr;
+};
+
+interface BrandApiItem {
+  brand: string;
+  price_change_pct?: number;
+  avg_price: number;
+  total_listings: number;
+}
+
+interface BrandItem {
+  name: string;
+  logo: string;
+  cat: string;
+  models: number;
+  change: string;
+  up: boolean;
+  avgPrice: string;
+  count: number;
+  goodRate: string;
+}
+
+interface HistoryApiItem {
+  date: string;
+  avg_price: number;
+}
 
 interface BrandsTabProps {
   isDark: boolean;
@@ -8,19 +40,19 @@ interface BrandsTabProps {
 
 export function BrandsTab({ isDark }: BrandsTabProps) {
   const [filter, setFilter] = useState<string>('all');
-  const [brandsData, setBrandsData] = useState<any[]>([]);
-  const [selectedBrand, setSelectedBrand] = useState<any | null>(null);
-  const [brandHistory, setBrandHistory] = useState<any>(null);
+  const [brandsData, setBrandsData] = useState<BrandItem[]>([]);
+  const [selectedBrand, setSelectedBrand] = useState<BrandItem | null>(null);
+  const [brandHistory, setBrandHistory] = useState<ChartData<'line'> | null>(null);
 
   useEffect(() => {
     getDailyBrands().then(res => {
       // Map API array to UI array format with generic emojis
       // Add fake categories so filters do not break
-      const logos: any = { Toyota:'🚗', Honda:'🚙', BMW:'🏎', Mercedes:'⭐', Nissan:'🔵', Suzuki:'🟡' };
-      const cats: any = { Toyota:'japanese', Honda:'japanese', BMW:'european', Mercedes:'european', Nissan:'japanese', Suzuki:'japanese' };
+      const logos: Record<string, string> = { Toyota:'🚗', Honda:'🚙', BMW:'🏎', Mercedes:'⭐', Nissan:'🔵', Suzuki:'🟡' };
+      const cats: Record<string, string> = { Toyota:'japanese', Honda:'japanese', BMW:'european', Mercedes:'european', Nissan:'japanese', Suzuki:'japanese' };
       
       const arr = res.brands ? res.brands : (Array.isArray(res) ? res : res.data || []);
-      const mapped = arr.map((i: any) => ({
+      const mapped = arr.map((i: BrandApiItem) => ({
          name: i.brand,
          logo: logos[i.brand] || '🚘',
          cat: cats[i.brand] || 'other',
@@ -30,7 +62,7 @@ export function BrandsTab({ isDark }: BrandsTabProps) {
          avgPrice: `Rs. ${(i.avg_price / 1000000).toFixed(1)}M`,
          count: i.total_listings,
          goodRate: 'N/A'
-      })).sort((a: any, b: any) => b.count - a.count);
+      })).sort((a: BrandItem, b: BrandItem) => b.count - a.count);
       
       setBrandsData(mapped);
     }).catch(console.error);
@@ -40,28 +72,23 @@ export function BrandsTab({ isDark }: BrandsTabProps) {
     ? { grid: 'rgba(255,255,255,0.045)', tick: '#2a3c4e', ttBg: '#18212f', ttBorder: 'rgba(255,255,255,0.09)', ttTitle: '#64788f', ttBody: '#e6ecf4', ptBorder: '#07090e' }
     : { grid: 'rgba(0,0,0,0.06)', tick: '#9ca3af', ttBg: '#ffffff', ttBorder: 'rgba(0,0,0,0.1)', ttTitle: '#6b7280', ttBody: '#111827', ptBorder: '#f7f9fc' };
 
-  const getGradient = (ctx: CanvasRenderingContext2D) => {
-    const gr = ctx.createLinearGradient(0, 0, 0, 130);
-    gr.addColorStop(0, 'rgba(0,184,217,0.15)');
-    gr.addColorStop(1, 'rgba(0,184,217,0)');
-    return gr;
-  };
 
-  const filteredBrands = brandsData.filter((b: any) => filter === 'all' || b.cat === filter);
 
-  const handleBrandClick = (b: any) => {
+  const filteredBrands = brandsData.filter((b: BrandItem) => filter === 'all' || b.cat === filter);
+
+  const handleBrandClick = (b: BrandItem) => {
     setSelectedBrand(b);
     setBrandHistory(null);
     getDailyHistory('brand', b.name, 30).then(res => {
       const arr = Array.isArray(res) ? res : res.data || Object.values(res);
-      const sorted = arr.sort((x: any, y: any) => new Date(x.date).getTime() - new Date(y.date).getTime());
+      const sorted = arr.sort((x: HistoryApiItem, y: HistoryApiItem) => new Date(x.date).getTime() - new Date(y.date).getTime());
       setBrandHistory({
-         labels: sorted.map((s: any) => s.date.slice(5)),
+         labels: sorted.map((s: HistoryApiItem) => s.date.slice(5)),
          datasets: [{
            label: b.name,
-           data: sorted.map((s: any) => s.avg_price),
+           data: sorted.map((s: HistoryApiItem) => s.avg_price),
            borderColor: '#00b8d9',
-           backgroundColor: (ctx: any) => getGradient(ctx.chart.ctx),
+           backgroundColor: (ctx: ScriptableContext<'line'>) => getGradient(ctx.chart.ctx),
            borderWidth: 2, pointRadius: 4, pointBackgroundColor: '#00b8d9',
            pointBorderColor: tc.ptBorder, pointBorderWidth: 2, tension: 0.38, fill: true
          }]
@@ -73,7 +100,7 @@ export function BrandsTab({ isDark }: BrandsTabProps) {
     }, 50);
   };
 
-  const chartOpts: any = {
+  const chartOpts: ChartOptions<'line'> = {
     responsive: true, maintainAspectRatio: false, interaction: { mode: 'index', intersect: false },
     plugins: {
       legend: { display: false },
@@ -81,12 +108,12 @@ export function BrandsTab({ isDark }: BrandsTabProps) {
         backgroundColor: tc.ttBg, borderColor: tc.ttBorder, borderWidth: 1,
         titleColor: tc.ttTitle, bodyColor: tc.ttBody, padding: 11,
         titleFont: { family: "'DM Mono',monospace", size: 11 }, bodyFont: { family: "'DM Sans',sans-serif", size: 13 },
-        callbacks: { label: (c: any) => ` Rs. ${(c.parsed.y * 1).toLocaleString()}` }
+        callbacks: { label: (c: TooltipItem<'line'>) => ` Rs. ${((c.parsed.y || 0) * 1).toLocaleString()}` }
       }
     },
     scales: {
       x: { grid: { color: tc.grid }, border: { color: tc.grid }, ticks: { color: tc.tick, font: { family: "'DM Mono',monospace", size: 10 } } },
-      y: { grid: { color: tc.grid }, border: { color: tc.grid }, ticks: { color: tc.tick, font: { family: "'DM Mono',monospace", size: 10 }, callback: (v: any) => `Rs.${Math.round(v / 100000) / 10}M` } }
+      y: { grid: { color: tc.grid }, border: { color: tc.grid }, ticks: { color: tc.tick, font: { family: "'DM Mono',monospace", size: 10 }, callback: (v: string | number) => `Rs.${Math.round(Number(v) / 100000) / 10}M` } }
     }
   };
 

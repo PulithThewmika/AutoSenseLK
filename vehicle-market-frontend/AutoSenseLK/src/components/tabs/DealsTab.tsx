@@ -1,12 +1,31 @@
 import { useState, useEffect } from 'react';
+import type { ChartOptions } from 'chart.js';
 import { Line } from 'react-chartjs-2';
 import { getMakes, getModels, getAvgPrice, getTrends } from '../../services/api';
+
+interface ScoreResult {
+  make: string;
+  model: string;
+  year: number;
+  price: number;
+  label: string;
+  cls: string;
+  col: string;
+  mAvg: number;
+  diff: number;
+  pct: string;
+  barW: number;
+  ratio: number;
+  hist: number[];
+  sampleCount: number;
+}
 
 interface DealsTabProps {
   isDark: boolean;
 }
 
-export function DealsTab({ isDark }: DealsTabProps) {
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+export function DealsTab(_props: DealsTabProps) {
   const [make, setMake] = useState('');
   const [model, setModel] = useState('');
   const [year, setYear] = useState('');
@@ -14,14 +33,14 @@ export function DealsTab({ isDark }: DealsTabProps) {
 
   const [makesList, setMakesList] = useState<string[]>([]);
   const [modelsList, setModelsList] = useState<string[]>([]);
-  const [recentScores, setRecentScores] = useState<any[]>([]);
-  const [currentResult, setCurrentResult] = useState<any | null>(null);
+  const [recentScores, setRecentScores] = useState<ScoreResult[]>([]);
+  const [currentResult, setCurrentResult] = useState<ScoreResult | null>(null);
 
   useEffect(() => {
     getMakes().then(res => {
       // API returns { makes: [{ name: "Toyota", slug: "toyota" }, ...], total: 56 }
       if (res && res.makes) {
-        setMakesList(res.makes.map((m: any) => m.name));
+        setMakesList(res.makes.map((m: {name: string}) => m.name));
       }
     }).catch(console.error);
   }, []);
@@ -31,7 +50,7 @@ export function DealsTab({ isDark }: DealsTabProps) {
       // Find slug for make (API expects slug usually, or we pass the string)
       getModels(make.toLowerCase()).then(res => {
          if(res && res.models) {
-           setModelsList(res.models.map((m: any) => m.name));
+           setModelsList(res.models.map((m: {name: string}) => m.name));
          } else {
            setModelsList([]);
          }
@@ -81,7 +100,7 @@ export function DealsTab({ isDark }: DealsTabProps) {
 
       setCurrentResult(result);
       setRecentScores(prev => {
-        const updated = [{ make, model, year: y, price: p, label, cls }, ...prev];
+        const updated = [result, ...prev];
         return updated.slice(0, 4);
       });
 
@@ -89,12 +108,12 @@ export function DealsTab({ isDark }: DealsTabProps) {
         document.getElementById('dealCard')?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
       }, 50);
 
-    } catch (err) {
+    } catch {
       alert('Error fetching market average. Please try again.');
     }
   };
 
-  const chartOpts: any = {
+  const chartOpts: ChartOptions<'line'> = {
     responsive: true, maintainAspectRatio: false,
     plugins: { legend: { display: false }, tooltip: { enabled: false } },
     scales: { x: { display: false }, y: { display: false } }
