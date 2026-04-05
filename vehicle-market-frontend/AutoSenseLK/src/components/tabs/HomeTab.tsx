@@ -10,30 +10,8 @@ import {
   Filler,
   Legend,
 } from 'chart.js';
-import type { ChartData, ChartOptions, ScriptableContext, TooltipItem } from 'chart.js';
 import { Line } from 'react-chartjs-2';
 import { getSummary, getTrends, getListings } from '../../services/api';
-
-const getGradient = (ctx: CanvasRenderingContext2D, r: number, g: number, b: number, a: number) => {
-  const gr = ctx.createLinearGradient(0, 0, 0, 280);
-  gr.addColorStop(0, `rgba(${r},${g},${b},${a})`);
-  gr.addColorStop(1, `rgba(${r},${g},${b},0)`);
-  return gr;
-};
-
-interface SummaryData {
-  avg_price: number;
-  total_listings: number;
-  makes_count?: number;
-  models_count?: number;
-}
-
-interface TickerData {
-  make: string;
-  model: string;
-  year: number;
-  price: number;
-}
 
 ChartJS.register(
   CategoryScale,
@@ -53,15 +31,20 @@ interface HomeTabProps {
 
 export function HomeTab({ onTabChange, isDark }: HomeTabProps) {
   const [range, setRange] = useState<'6m' | '1y' | 'all'>('6m');
-  const [summary, setSummary] = useState<SummaryData | null>(null);
-  const [tickers, setTickers] = useState<TickerData[]>([]);
-  const [chartData, setChartData] = useState<ChartData<'line'> | null>(null);
+  const [summary, setSummary] = useState<any>(null);
+  const [tickers, setTickers] = useState<any[]>([]);
+  const [chartData, setChartData] = useState<any>(null);
 
   const tc = isDark
     ? { grid: 'rgba(255,255,255,0.045)', tick: '#2a3c4e', ttBg: '#18212f', ttBorder: 'rgba(255,255,255,0.09)', ttTitle: '#64788f', ttBody: '#e6ecf4', ptBorder: '#07090e' }
     : { grid: 'rgba(0,0,0,0.06)', tick: '#9ca3af', ttBg: '#ffffff', ttBorder: 'rgba(0,0,0,0.1)', ttTitle: '#6b7280', ttBody: '#111827', ptBorder: '#f7f9fc' };
 
-
+  const getGradient = (ctx: CanvasRenderingContext2D, r: number, g: number, b: number, a: number) => {
+    const gr = ctx.createLinearGradient(0, 0, 0, 280);
+    gr.addColorStop(0, `rgba(${r},${g},${b},${a})`);
+    gr.addColorStop(1, `rgba(${r},${g},${b},0)`);
+    return gr;
+  };
 
   useEffect(() => {
     getSummary().then(res => setSummary(res)).catch(console.error);
@@ -85,12 +68,12 @@ export function HomeTab({ onTabChange, isDark }: HomeTabProps) {
 
         let labels = [] as string[];
         if (res.length > 0 && res[0]) {
-           const historyKeys = Object.keys(res[0].history || {}).sort();
-           labels = historyKeys.map(k => {
-             const [y, m] = k.split('-');
-             const name = new Date(parseInt(y), parseInt(m) - 1).toLocaleString('default', { month: 'short' });
-             return `${name} ${y.slice(2)}`;
-           });
+          const historyKeys = Object.keys(res[0].history || {}).sort();
+          labels = historyKeys.map(k => {
+            const [y, m] = k.split('-');
+            const name = new Date(parseInt(y), parseInt(m) - 1).toLocaleString('default', { month: 'short' });
+            return `${name} ${y.slice(2)}`;
+          });
         }
 
         const datasets = models.map((m, i) => {
@@ -102,7 +85,7 @@ export function HomeTab({ onTabChange, isDark }: HomeTabProps) {
             label: `${m.make} ${m.model}`,
             data,
             borderColor: m.color,
-            backgroundColor: (context: ScriptableContext<'line'>) => getGradient(context.chart.ctx, m.rgb[0], m.rgb[1], m.rgb[2], 0.17),
+            backgroundColor: (context: any) => getGradient(context.chart.ctx, m.rgb[0], m.rgb[1], m.rgb[2], 0.17),
             borderWidth: 2.2,
             pointRadius: 0,
             pointHoverRadius: 5,
@@ -120,7 +103,7 @@ export function HomeTab({ onTabChange, isDark }: HomeTabProps) {
   }, [range]);
 
 
-  const chartOptions: ChartOptions<'line'> = {
+  const chartOptions: any = {
     responsive: true,
     maintainAspectRatio: false,
     interaction: { mode: 'index', intersect: false },
@@ -136,13 +119,13 @@ export function HomeTab({ onTabChange, isDark }: HomeTabProps) {
         titleFont: { family: "'DM Mono',monospace", size: 11 },
         bodyFont: { family: "'DM Sans',sans-serif", size: 13 },
         callbacks: {
-          label: (c: TooltipItem<'line'>) => ` ${c.dataset.label}: Rs. ${((c.parsed.y || 0) * 1).toLocaleString()}`
+          label: (c: any) => ` ${c.dataset.label}: Rs. ${(c.parsed.y * 1).toLocaleString()}`
         }
       },
     },
     scales: {
       x: { grid: { color: tc.grid }, border: { color: tc.grid }, ticks: { color: tc.tick, font: { family: "'DM Mono',monospace", size: 10 } } },
-      y: { grid: { color: tc.grid }, border: { color: tc.grid }, ticks: { color: tc.tick, font: { family: "'DM Mono',monospace", size: 10 }, callback: (v: string | number) => `Rs.${Math.round(Number(v) / 100000) / 10}M` } }
+      y: { grid: { color: tc.grid }, border: { color: tc.grid }, ticks: { color: tc.tick, font: { family: "'DM Mono',monospace", size: 10 }, callback: (v: any) => `Rs.${Math.round(v / 100000) / 10}M` } }
     },
   };
 
@@ -158,7 +141,7 @@ export function HomeTab({ onTabChange, isDark }: HomeTabProps) {
             <p className="hero-sub">AutoSenseLK tracks live ikman.lk listings across Sri Lanka — using data intelligence to help you know exactly what any car is really worth.</p>
             <div className="hero-actions">
               <button className="btn-p" onClick={() => onTabChange('analytics')}>
-                Explore market 
+                Explore market
                 <svg width="14" height="14" viewBox="0 0 16 16" fill="none" style={{ marginLeft: 6 }}>
                   <path d="M3 8h10M9 4l4 4-4 4" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" />
                 </svg>
@@ -172,7 +155,7 @@ export function HomeTab({ onTabChange, isDark }: HomeTabProps) {
             <div className="sc"><div className="sc-label">Latest Listing</div><div className="sc-val" style={{ fontSize: '13px', color: 'var(--cyan)', lineHeight: 1.4 }}>{tickers[0] ? `${tickers[0].make} ${tickers[0].model} ${tickers[0].year}` : '-'}</div><div className="sc-delta">Added Recently</div></div>
           </div>
         </div>
-        
+
         <div className="hero-chart">
           <div className="cc">
             <div className="cc-head">
@@ -199,7 +182,7 @@ export function HomeTab({ onTabChange, isDark }: HomeTabProps) {
             </div>
           </div>
         </div>
-        
+
         {tickers.length > 0 && (
           <div className="ticker">
             <div className="tick-inner">
