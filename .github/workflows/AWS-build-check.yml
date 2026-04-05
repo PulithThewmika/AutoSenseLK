@@ -1,0 +1,31 @@
+name: AWS Build Check
+on:
+  push:
+    branches:
+      - '**'
+  pull_request:
+
+jobs:
+  build-check:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout source code
+        uses: actions/checkout@v4
+
+      - name: Set up Python version
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+
+      - name: Create .env file for backend secrets mock
+        working-directory: vehicle-market-backend
+        run: |
+          echo "MONGODB_URL=mock" >> .env
+          echo "MONGODB_DB_NAME=mock" >> .env
+
+      - name: Create deployment package
+        working-directory: vehicle-market-backend
+        run: |
+          chmod +x setup.sh
+          zip -r deploy.zip . -x "*.git*" -x "venv/*" -x "antenv/*" -x "*/__pycache__/*"

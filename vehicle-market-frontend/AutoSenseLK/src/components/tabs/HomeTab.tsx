@@ -35,6 +35,17 @@ export function HomeTab({ onTabChange, isDark }: HomeTabProps) {
   const [tickers, setTickers] = useState<any[]>([]);
   const [chartData, setChartData] = useState<any>(null);
 
+  const tc = isDark
+    ? { grid: 'rgba(255,255,255,0.045)', tick: '#2a3c4e', ttBg: '#18212f', ttBorder: 'rgba(255,255,255,0.09)', ttTitle: '#64788f', ttBody: '#e6ecf4', ptBorder: '#07090e' }
+    : { grid: 'rgba(0,0,0,0.06)', tick: '#9ca3af', ttBg: '#ffffff', ttBorder: 'rgba(0,0,0,0.1)', ttTitle: '#6b7280', ttBody: '#111827', ptBorder: '#f7f9fc' };
+
+  const getGradient = (ctx: CanvasRenderingContext2D, r: number, g: number, b: number, a: number) => {
+    const gr = ctx.createLinearGradient(0, 0, 0, 280);
+    gr.addColorStop(0, `rgba(${r},${g},${b},${a})`);
+    gr.addColorStop(1, `rgba(${r},${g},${b},0)`);
+    return gr;
+  };
+
   useEffect(() => {
     getSummary().then(res => setSummary(res)).catch(console.error);
     getListings(1, 20).then(res => setTickers(res.results)).catch(console.error);
@@ -57,12 +68,12 @@ export function HomeTab({ onTabChange, isDark }: HomeTabProps) {
 
         let labels = [] as string[];
         if (res.length > 0 && res[0]) {
-           const historyKeys = Object.keys(res[0].history || {}).sort();
-           labels = historyKeys.map(k => {
-             const [y, m] = k.split('-');
-             const name = new Date(parseInt(y), parseInt(m) - 1).toLocaleString('default', { month: 'short' });
-             return `${name} ${y.slice(2)}`;
-           });
+          const historyKeys = Object.keys(res[0].history || {}).sort();
+          labels = historyKeys.map(k => {
+            const [y, m] = k.split('-');
+            const name = new Date(parseInt(y), parseInt(m) - 1).toLocaleString('default', { month: 'short' });
+            return `${name} ${y.slice(2)}`;
+          });
         }
 
         const datasets = models.map((m, i) => {
@@ -91,16 +102,6 @@ export function HomeTab({ onTabChange, isDark }: HomeTabProps) {
     fetchTrends();
   }, [range]);
 
-  const tc = isDark
-    ? { grid: 'rgba(255,255,255,0.045)', tick: '#2a3c4e', ttBg: '#18212f', ttBorder: 'rgba(255,255,255,0.09)', ttTitle: '#64788f', ttBody: '#e6ecf4', ptBorder: '#07090e' }
-    : { grid: 'rgba(0,0,0,0.06)', tick: '#9ca3af', ttBg: '#ffffff', ttBorder: 'rgba(0,0,0,0.1)', ttTitle: '#6b7280', ttBody: '#111827', ptBorder: '#f7f9fc' };
-
-  const getGradient = (ctx: CanvasRenderingContext2D, r: number, g: number, b: number, a: number) => {
-    const gr = ctx.createLinearGradient(0, 0, 0, 280);
-    gr.addColorStop(0, `rgba(${r},${g},${b},${a})`);
-    gr.addColorStop(1, `rgba(${r},${g},${b},0)`);
-    return gr;
-  };
 
   const chartOptions: any = {
     responsive: true,
@@ -140,7 +141,7 @@ export function HomeTab({ onTabChange, isDark }: HomeTabProps) {
             <p className="hero-sub">AutoSenseLK tracks live ikman.lk listings across Sri Lanka — using data intelligence to help you know exactly what any car is really worth.</p>
             <div className="hero-actions">
               <button className="btn-p" onClick={() => onTabChange('analytics')}>
-                Explore market 
+                Explore market
                 <svg width="14" height="14" viewBox="0 0 16 16" fill="none" style={{ marginLeft: 6 }}>
                   <path d="M3 8h10M9 4l4 4-4 4" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" />
                 </svg>
@@ -154,7 +155,7 @@ export function HomeTab({ onTabChange, isDark }: HomeTabProps) {
             <div className="sc"><div className="sc-label">Latest Listing</div><div className="sc-val" style={{ fontSize: '13px', color: 'var(--cyan)', lineHeight: 1.4 }}>{tickers[0] ? `${tickers[0].make} ${tickers[0].model} ${tickers[0].year}` : '-'}</div><div className="sc-delta">Added Recently</div></div>
           </div>
         </div>
-        
+
         <div className="hero-chart">
           <div className="cc">
             <div className="cc-head">
@@ -181,7 +182,7 @@ export function HomeTab({ onTabChange, isDark }: HomeTabProps) {
             </div>
           </div>
         </div>
-        
+
         {tickers.length > 0 && (
           <div className="ticker">
             <div className="tick-inner">

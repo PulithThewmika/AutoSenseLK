@@ -9,13 +9,7 @@ import { Footer } from './components/Footer';
 
 function App() {
   const [activeTab, setActiveTab] = useState('home');
-  const [isDark, setIsDark] = useState(true);
-
-  // Initialize theme from local storage on mount
-  useEffect(() => {
-    const saved = localStorage.getItem('as-theme');
-    if (saved === 'light') setIsDark(false);
-  }, []);
+  const [isDark, setIsDark] = useState(() => localStorage.getItem('as-theme') !== 'light');
 
   // Sync theme changes to data attribute
   useEffect(() => {

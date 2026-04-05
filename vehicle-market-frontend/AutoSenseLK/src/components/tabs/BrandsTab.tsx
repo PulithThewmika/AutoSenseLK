@@ -16,22 +16,22 @@ export function BrandsTab({ isDark }: BrandsTabProps) {
     getDailyBrands().then(res => {
       // Map API array to UI array format with generic emojis
       // Add fake categories so filters do not break
-      const logos: any = { Toyota:'🚗', Honda:'🚙', BMW:'🏎', Mercedes:'⭐', Nissan:'🔵', Suzuki:'🟡' };
-      const cats: any = { Toyota:'japanese', Honda:'japanese', BMW:'european', Mercedes:'european', Nissan:'japanese', Suzuki:'japanese' };
-      
+      const logos: any = { Toyota: '🚗', Honda: '🚙', BMW: '🏎', Mercedes: '⭐', Nissan: '🔵', Suzuki: '🟡' };
+      const cats: any = { Toyota: 'japanese', Honda: 'japanese', BMW: 'european', Mercedes: 'european', Nissan: 'japanese', Suzuki: 'japanese' };
+
       const arr = res.brands ? res.brands : (Array.isArray(res) ? res : res.data || []);
       const mapped = arr.map((i: any) => ({
-         name: i.brand,
-         logo: logos[i.brand] || '🚘',
-         cat: cats[i.brand] || 'other',
-         models: 0,
-         change: i.price_change_pct ? `${i.price_change_pct > 0 ? '+' : ''}${i.price_change_pct.toFixed(2)}%` : '-',
-         up: (i.price_change_pct || 0) > 0,
-         avgPrice: `Rs. ${(i.avg_price / 1000000).toFixed(1)}M`,
-         count: i.total_listings,
-         goodRate: 'N/A'
+        name: i.brand,
+        logo: logos[i.brand] || '🚘',
+        cat: cats[i.brand] || 'other',
+        models: 0,
+        change: i.price_change_pct ? `${i.price_change_pct > 0 ? '+' : ''}${i.price_change_pct.toFixed(2)}%` : '-',
+        up: (i.price_change_pct || 0) > 0,
+        avgPrice: `Rs. ${(i.avg_price / 1000000).toFixed(1)}M`,
+        count: i.total_listings,
+        goodRate: 'N/A'
       })).sort((a: any, b: any) => b.count - a.count);
-      
+
       setBrandsData(mapped);
     }).catch(console.error);
   }, []);
@@ -56,15 +56,15 @@ export function BrandsTab({ isDark }: BrandsTabProps) {
       const arr = Array.isArray(res) ? res : res.data || Object.values(res);
       const sorted = arr.sort((x: any, y: any) => new Date(x.date).getTime() - new Date(y.date).getTime());
       setBrandHistory({
-         labels: sorted.map((s: any) => s.date.slice(5)),
-         datasets: [{
-           label: b.name,
-           data: sorted.map((s: any) => s.avg_price),
-           borderColor: '#00b8d9',
-           backgroundColor: (ctx: any) => getGradient(ctx.chart.ctx),
-           borderWidth: 2, pointRadius: 4, pointBackgroundColor: '#00b8d9',
-           pointBorderColor: tc.ptBorder, pointBorderWidth: 2, tension: 0.38, fill: true
-         }]
+        labels: sorted.map((s: any) => s.date.slice(5)),
+        datasets: [{
+          label: b.name,
+          data: sorted.map((s: any) => s.avg_price),
+          borderColor: '#00b8d9',
+          backgroundColor: (ctx: any) => getGradient(ctx.chart.ctx),
+          borderWidth: 2, pointRadius: 4, pointBackgroundColor: '#00b8d9',
+          pointBorderColor: tc.ptBorder, pointBorderWidth: 2, tension: 0.38, fill: true
+        }]
       });
     }).catch(console.error);
 
@@ -96,7 +96,7 @@ export function BrandsTab({ isDark }: BrandsTabProps) {
         <div className="sec-eye">Supported brands</div>
         <h2 className="sec-h">Live market taxonomy. <span className="muted">All covered.</span></h2>
         <p className="sec-sub">Model-level crawling from the live API. Click any brand to see detailed 30-day historical trendlines.</p>
-        
+
         <div className="brand-filter-row">
           <button className={`bfbtn ${filter === 'all' ? 'active' : ''}`} onClick={() => { setFilter('all'); setSelectedBrand(null); }}>All brands</button>
           <button className={`bfbtn ${filter === 'japanese' ? 'active' : ''}`} onClick={() => { setFilter('japanese'); setSelectedBrand(null); }}>Japanese</button>
@@ -104,7 +104,7 @@ export function BrandsTab({ isDark }: BrandsTabProps) {
           <button className={`bfbtn ${filter === 'korean' ? 'active' : ''}`} onClick={() => { setFilter('korean'); setSelectedBrand(null); }}>Korean</button>
           <button className={`bfbtn ${filter === 'other' ? 'active' : ''}`} onClick={() => { setFilter('other'); setSelectedBrand(null); }}>Other</button>
         </div>
-        
+
         <div className="brand-grid">
           {filteredBrands.map((b, i) => {
             return (
@@ -137,7 +137,7 @@ export function BrandsTab({ isDark }: BrandsTabProps) {
             </div>
             <div className="sec-eye" style={{ fontSize: 10, marginBottom: 6 }}>30-day price trend</div>
             <div className="bd-chart-h">
-              {brandHistory ? <Line data={brandHistory} options={chartOpts} /> : <div style={{height:'100%', display:'flex', alignItems:'center', justifyContent:'center', color:'var(--mu)'}}>Loading 30-day API history curve...</div>}
+              {brandHistory ? <Line data={brandHistory} options={chartOpts} /> : <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--mu)' }}>Loading 30-day API history curve...</div>}
             </div>
           </div>
         )}

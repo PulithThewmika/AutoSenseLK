@@ -1,0 +1,60 @@
+name: Backend CI
+
+on:
+  push:
+    branches: [ "main", "Dev", "dev" ]
+    paths:
+      - 'vehicle-market-backend/**'
+      - '.github/workflows/backend-tests.yml'
+  pull_request:
+    branches: [ "main", "Dev", "dev" ]
+    paths:
+      - 'vehicle-market-backend/**'
+      - '.github/workflows/backend-tests.yml'
+
+jobs:
+  test-backend:
+    name: Run Pytest
+    runs-on: ubuntu-latest
+
+    services:
+      mongodb:
+        image: mongo:6-jammy
+        ports:
+          - 27017:27017
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+
+    defaults:
+      run:
+        working-directory: ./vehicle-market-backend
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+
+      - name: Install Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pytest pytest-asyncio pytest-dotenv httpx mongomock anyio
+
+      - name: Run Pytest
+        env:
+          ENVIRONMENT: test
+          MONGODB_URL: mongodb://localhost:27017
+          MONGODB_DB_NAME: vehicle_market_test
+          REDIS_URL: redis://localhost:6379/1
+          DEBUG: True
+          API_KEY: test-api-key
+          JWT_SECRET: test-secret
+        run: |
+          pytest tests/ -v

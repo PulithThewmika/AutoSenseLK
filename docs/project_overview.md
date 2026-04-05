@@ -70,7 +70,7 @@ uvicorn app.main:app --reload
 - **Swagger Docs**: http://localhost:8000/docs
 - **ReDoc**: http://localhost:8000/redoc
 
-### 2. Frontend
+### 2. Frontend Web App
 
 ```bash
 cd vehicle-market-frontend/AutoSenseLK
@@ -84,7 +84,21 @@ npm run dev
 
 - **App**: http://localhost:5173
 
-### 3. Docker (All Services)
+### 3. Admin Dashboard
+
+```bash
+cd vehicle-market-admindash
+
+# Install dependencies
+npm install
+
+# Start dev server
+npm run dev
+```
+
+- **Admin Dashboard**: http://localhost:5174
+
+### 4. Docker (All Services)
 
 ```bash
 cd vehicle-market-backend
@@ -149,6 +163,13 @@ AutoSenseLK/
 │       │   └── index.css           ← Global styles
 │       ├── index.html              ← HTML template
 │       └── package.json            ← Node dependencies
+├── vehicle-market-admindash/      ← Admin Dashboard (Vite + React)
+│   ├── src/
+│   │   ├── pages/
+│   │   │   ├── Overview.tsx        ← Market stats & Scrape controls
+│   │   │   └── Logs.tsx            ← Real-time server logs via WebSockets
+│   │   └── ...
+│   └── package.json
 ├── README.md
 └── LICENSE
 ```
@@ -162,8 +183,8 @@ AutoSenseLK/
 │    Frontend      │  (Vite + React)
 │  localhost:5173  │
 └───────┬─────────┘
-        │ HTTP API calls
-        ▼
+        │ WS & API calls        │ HTTP API calls
+        ▼                       ▼
 ┌─────────────────┐       ┌──────────────┐
 │    Backend API   │──────▶│   MongoDB    │
 │  localhost:8000  │       │  :27017      │

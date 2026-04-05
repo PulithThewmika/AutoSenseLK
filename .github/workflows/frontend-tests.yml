@@ -1,0 +1,67 @@
+name: Frontend CI
+
+on:
+  push:
+    branches: [ "main", "Dev", "dev" ]
+    paths:
+      - 'vehicle-market-frontend/**'
+      - 'vehicle-market-admindash/**'
+      - '.github/workflows/frontend-tests.yml'
+  pull_request:
+    branches: [ "main", "Dev", "dev" ]
+    paths:
+      - 'vehicle-market-frontend/**'
+      - 'vehicle-market-admindash/**'
+      - '.github/workflows/frontend-tests.yml'
+
+jobs:
+  build-main-frontend:
+    name: Build & Lint Main Frontend
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./vehicle-market-frontend/AutoSenseLK
+
+    steps:
+    - name: Checkout Repository
+      uses: actions/checkout@v4
+      
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+        # Optional: cache 'npm' based on lockfiles if you commit them
+        
+    - name: Install Dependencies
+      run: npm install # Falls back to install if there isn't a package-lock.json yet
+      
+    - name: Lint Code
+      run: npm run lint
+      
+    - name: Type Check & Build
+      run: npm run build
+
+  build-admin-dash:
+    name: Build & Lint Admin Dashboard
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./vehicle-market-admindash
+
+    steps:
+    - name: Checkout Repository
+      uses: actions/checkout@v4
+      
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+        
+    - name: Install Dependencies
+      run: npm install
+      
+    - name: Lint Code
+      run: npm run lint
+      
+    - name: Type Check & Build
+      run: npm run build

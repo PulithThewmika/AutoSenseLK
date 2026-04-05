@@ -30,16 +30,13 @@ export function DealsTab({ isDark }: DealsTabProps) {
     if (make) {
       // Find slug for make (API expects slug usually, or we pass the string)
       getModels(make.toLowerCase()).then(res => {
-         if(res && res.models) {
-           setModelsList(res.models.map((m: any) => m.name));
-         } else {
-           setModelsList([]);
-         }
+        if (res && res.models) {
+          setModelsList(res.models.map((m: any) => m.name));
+        } else {
+          setModelsList([]);
+        }
       }).catch(() => setModelsList([]));
-    } else {
-      setModelsList([]);
     }
-    setModel('');
   }, [make]);
 
   const handleScore = async () => {
@@ -77,7 +74,7 @@ export function DealsTab({ isDark }: DealsTabProps) {
         const sortedKeys = Object.keys(trendsRes.history).sort();
         hist = sortedKeys.map(k => trendsRes.history[k] / 1000); // Scale down to K
       }
-      
+
       const result = {
         make, model, year: y, price: p, label, cls, col, mAvg, diff, pct, barW, ratio, hist, sampleCount
       };
@@ -106,7 +103,7 @@ export function DealsTab({ isDark }: DealsTabProps) {
   let currentHist = [6800, 6950, 7100, 7050, 7300, 7420, 7350, 7500, 7420, 7550, 7600, 7680];
   let currentPriceHist = Array(12).fill(6750);
   let chartLabels = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-  
+
   if (currentResult) {
     currentHist = currentResult.hist;
     if (currentHist.length > 0) {
@@ -136,7 +133,7 @@ export function DealsTab({ isDark }: DealsTabProps) {
       <div className="deal-pad">
         <div className="sec-eye">Deal Intelligence</div>
         <h2 className="sec-h">Know in seconds if a listing is worth it.</h2>
-        
+
         <div className="deal-layout">
           <div className="deal-form-card">
             <div className="score-legend">
@@ -156,7 +153,7 @@ export function DealsTab({ isDark }: DealsTabProps) {
 
             <div className="score-form-title">Enter listing details</div>
             <div className="score-row">
-              <select className="score-input" value={make} onChange={e => setMake(e.target.value)}>
+              <select className="score-input" value={make} onChange={e => { setMake(e.target.value); setModel(''); setModelsList([]); }}>
                 <option value="">Select Make</option>
                 {makesList.map(m => <option key={m} value={m}>{m}</option>)}
               </select>

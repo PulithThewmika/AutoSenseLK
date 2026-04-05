@@ -2,6 +2,11 @@
 FastAPI application factory and router mounting.
 """
 
+import warnings
+warnings.filterwarnings("ignore", category=Warning, module="pymongo")
+warnings.filterwarnings("ignore", category=Warning, module="cryptography")
+
+import asyncio
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
@@ -13,6 +18,7 @@ from app.core.database import init_db
 from app.scraper.seeder import seed_makes_and_models
 from app.api.v1 import listings, analytics, deals, makes, search
 from app.api.v1 import scrape
+from app.api.v1 import logs
 
 
 @asynccontextmanager
@@ -20,7 +26,10 @@ async def lifespan(app: FastAPI):
     """Startup / shutdown lifecycle — initialise MongoDB on boot."""
     await init_db()
     await seed_makes_and_models()   # upsert brand/model registry into DB
-    yield
+    try:
+        yield
+    except asyncio.CancelledError:
+        pass
 
 
 def create_app() -> FastAPI:
@@ -51,6 +60,7 @@ def create_app() -> FastAPI:
     app.include_router(makes.router, prefix=api_prefix)
     app.include_router(search.router, prefix=api_prefix)
     app.include_router(scrape.router, prefix=api_prefix)
+    app.include_router(logs.router, prefix=api_prefix)
 
     @app.get("/health", tags=["health"])
     async def health_check():
@@ -60,3 +70,4 @@ def create_app() -> FastAPI:
 
 
 app = create_app()
+# 

@@ -21,7 +21,8 @@ vehicle-market-backend/
 │   │       ├── deals.py        ← GET /deals/score
 │   │       ├── makes.py        ← GET /makes, /makes/{name}/models, /{make}/models/{model}/years
 │   │       ├── search.py       ← GET /search
-│   │       └── scrape.py       ← POST /scrape/trigger, /trigger/brand/{b}, GET /status, /brands
+│   │       ├── scrape.py       ← POST /scrape/trigger, /trigger/brand/{b}, GET /status, /brands
+│   │       └── logs.py         ← WS /logs/stream
 │   ├── core/
 │   │   ├── config.py           ← Settings via pydantic-settings (.env)
 │   │   ├── database.py         ← MongoDB + Beanie initialisation
