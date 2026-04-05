@@ -35,6 +35,17 @@ export function HomeTab({ onTabChange, isDark }: HomeTabProps) {
   const [tickers, setTickers] = useState<any[]>([]);
   const [chartData, setChartData] = useState<any>(null);
 
+  const tc = isDark
+    ? { grid: 'rgba(255,255,255,0.045)', tick: '#2a3c4e', ttBg: '#18212f', ttBorder: 'rgba(255,255,255,0.09)', ttTitle: '#64788f', ttBody: '#e6ecf4', ptBorder: '#07090e' }
+    : { grid: 'rgba(0,0,0,0.06)', tick: '#9ca3af', ttBg: '#ffffff', ttBorder: 'rgba(0,0,0,0.1)', ttTitle: '#6b7280', ttBody: '#111827', ptBorder: '#f7f9fc' };
+
+  const getGradient = (ctx: CanvasRenderingContext2D, r: number, g: number, b: number, a: number) => {
+    const gr = ctx.createLinearGradient(0, 0, 0, 280);
+    gr.addColorStop(0, `rgba(${r},${g},${b},${a})`);
+    gr.addColorStop(1, `rgba(${r},${g},${b},0)`);
+    return gr;
+  };
+
   useEffect(() => {
     getSummary().then(res => setSummary(res)).catch(console.error);
     getListings(1, 20).then(res => setTickers(res.results)).catch(console.error);
@@ -91,16 +102,6 @@ export function HomeTab({ onTabChange, isDark }: HomeTabProps) {
     fetchTrends();
   }, [range]);
 
-  const tc = isDark
-    ? { grid: 'rgba(255,255,255,0.045)', tick: '#2a3c4e', ttBg: '#18212f', ttBorder: 'rgba(255,255,255,0.09)', ttTitle: '#64788f', ttBody: '#e6ecf4', ptBorder: '#07090e' }
-    : { grid: 'rgba(0,0,0,0.06)', tick: '#9ca3af', ttBg: '#ffffff', ttBorder: 'rgba(0,0,0,0.1)', ttTitle: '#6b7280', ttBody: '#111827', ptBorder: '#f7f9fc' };
-
-  const getGradient = (ctx: CanvasRenderingContext2D, r: number, g: number, b: number, a: number) => {
-    const gr = ctx.createLinearGradient(0, 0, 0, 280);
-    gr.addColorStop(0, `rgba(${r},${g},${b},${a})`);
-    gr.addColorStop(1, `rgba(${r},${g},${b},0)`);
-    return gr;
-  };
 
   const chartOptions: any = {
     responsive: true,

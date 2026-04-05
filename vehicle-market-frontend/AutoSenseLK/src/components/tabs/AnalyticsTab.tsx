@@ -44,6 +44,17 @@ export function AnalyticsTab({ isDark }: AnalyticsTabProps) {
     { make: 'Perodua', model: 'Axia', price: 0, count: 0 },
   ]);
 
+  const tc = isDark
+    ? { grid: 'rgba(255,255,255,0.045)', tick: '#2a3c4e', ttBg: '#18212f', ttBorder: 'rgba(255,255,255,0.09)', ttTitle: '#64788f', ttBody: '#e6ecf4', ptBorder: '#07090e' }
+    : { grid: 'rgba(0,0,0,0.06)', tick: '#9ca3af', ttBg: '#ffffff', ttBorder: 'rgba(0,0,0,0.1)', ttTitle: '#6b7280', ttBody: '#111827', ptBorder: '#f7f9fc' };
+
+  const getGradient = (ctx: CanvasRenderingContext2D, r: number, g: number, b: number, a: number, h: number = 280) => {
+    const gr = ctx.createLinearGradient(0, 0, h, h); // fixed start param, though the original was (0,0,0,h)
+    gr.addColorStop(0, `rgba(${r},${g},${b},${a})`);
+    gr.addColorStop(1, `rgba(${r},${g},${b},0)`);
+    return gr;
+  };
+
   useEffect(() => {
     // Top model data (Aqua by default for overview)
     getDepreciation('Toyota', 'Aqua').then(res => {
@@ -91,16 +102,6 @@ export function AnalyticsTab({ isDark }: AnalyticsTabProps) {
       });
   }, []);
 
-  const tc = isDark
-    ? { grid: 'rgba(255,255,255,0.045)', tick: '#2a3c4e', ttBg: '#18212f', ttBorder: 'rgba(255,255,255,0.09)', ttTitle: '#64788f', ttBody: '#e6ecf4', ptBorder: '#07090e' }
-    : { grid: 'rgba(0,0,0,0.06)', tick: '#9ca3af', ttBg: '#ffffff', ttBorder: 'rgba(0,0,0,0.1)', ttTitle: '#6b7280', ttBody: '#111827', ptBorder: '#f7f9fc' };
-
-  const getGradient = (ctx: CanvasRenderingContext2D, r: number, g: number, b: number, a: number, h: number = 280) => {
-    const gr = ctx.createLinearGradient(0, 0, 0, h);
-    gr.addColorStop(0, `rgba(${r},${g},${b},${a})`);
-    gr.addColorStop(1, `rgba(${r},${g},${b},0)`);
-    return gr;
-  };
 
   const baseOpts = (yCb: (val: any) => string): any => ({
     responsive: true, maintainAspectRatio: false, interaction: { mode: 'index', intersect: false },

@@ -36,10 +36,7 @@ export function DealsTab({ isDark }: DealsTabProps) {
            setModelsList([]);
          }
       }).catch(() => setModelsList([]));
-    } else {
-      setModelsList([]);
     }
-    setModel('');
   }, [make]);
 
   const handleScore = async () => {
@@ -156,7 +153,7 @@ export function DealsTab({ isDark }: DealsTabProps) {
 
             <div className="score-form-title">Enter listing details</div>
             <div className="score-row">
-              <select className="score-input" value={make} onChange={e => setMake(e.target.value)}>
+              <select className="score-input" value={make} onChange={e => { setMake(e.target.value); setModel(''); setModelsList([]); }}>
                 <option value="">Select Make</option>
                 {makesList.map(m => <option key={m} value={m}>{m}</option>)}
               </select>
