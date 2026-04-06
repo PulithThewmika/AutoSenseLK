@@ -228,6 +228,7 @@ All styles are in a single CSS file (~15KB). Key design decisions:
 
 
 
+
 ---
 
 # Admin Dashboard Structure
