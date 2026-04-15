@@ -8,9 +8,10 @@ pydantic-settings==2.*
 motor==3.*
 beanie==1.*
 
-# ── Background Tasks ────────────────────────────────
+# ── Background Tasks / Scheduling ───────────────────
 celery==5.*
 redis==5.*
+APScheduler==3.*
 
 # ── Scraping ─────────────────────────────────────────
 scrapy==2.*

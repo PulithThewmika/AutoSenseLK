@@ -13,7 +13,8 @@
 | **API Framework** | FastAPI + Uvicorn | Async REST API |
 | **Database** | MongoDB (Motor async driver) | Document storage for listings |
 | **ODM** | Beanie | MongoDB object-document mapper |
-| **Task Queue** | Celery + Redis | Background job processing |
+| **Scheduling** | APScheduler (in-process) | Daily pipeline cron (midnight) |
+| **Task Queue** | Celery + Redis | Background job processing (optional) |
 | **Scraping** | httpx + Playwright + BeautifulSoup + lxml | Data collection from ikman.lk |
 | **ML** | scikit-learn + pandas + NumPy | Price prediction & deal scoring |
 | **Security** | python-jose (JWT) + passlib (bcrypt) | Authentication & API key validation |
@@ -138,7 +139,8 @@ AutoSenseLK/
 │   ├── project_overview.md
 │   ├── api_documentation.md
 │   ├── backend_structure.md
-│   └── frontend_structure.md
+│   ├── frontend_structure.md
+│   └── scheduler.md               ← Daily pipeline, retry logic, architecture
 ├── vehicle-market-backend/
 │   ├── app/                       ← FastAPI application
 │   │   ├── api/v1/                ← REST endpoints
@@ -148,7 +150,9 @@ AutoSenseLK/
 │   │   ├── scraper/               ← Web scraping pipeline
 │   │   ├── ml/                    ← Machine learning module
 │   │   ├── analytics/             ← Market analytics logic
-│   │   ├── tasks/                 ← Celery background tasks
+│   │   ├── tasks/                 ← Scheduling & background tasks
+│   │   │   ├── scheduler.py       ← APScheduler daily pipeline
+│   │   │   └── celery_app.py      ← Celery Beat (optional)
 │   │   └── main.py                ← App factory & router mount
 │   ├── models_store/              ← Trained ML model files (.pkl)
 │   ├── tests/                     ← Test suite
@@ -188,20 +192,26 @@ AutoSenseLK/
 ┌─────────────────┐       ┌──────────────┐
 │    Backend API   │──────▶│   MongoDB    │
 │  localhost:8000  │       │  :27017      │
-└───────┬─────────┘       └──────────────┘
+│                  │       └──────────────┘
+│  ┌────────────┐ │
+│  │APScheduler │ │  ← Daily pipeline at midnight
+│  │(in-process)│ │     Scrape → Snapshot → Retrain
+│  └────────────┘ │
+└───────┬─────────┘
         │ (optional)
         ▼
 ┌─────────────────┐
 │  Celery Worker   │──────▶ Redis :6379
-│  (background)    │
+│  (alternative)   │
 └─────────────────┘
 ```
 
 | Service | Required? | When Needed |
 |---|---|---|
 | **MongoDB** | ✅ Yes | Always — primary data store |
-| **Redis** | ❌ Optional | Only when running Celery background tasks (scraping, ML training, snapshots) |
-| **Celery Worker** | ❌ Optional | Only for scheduled/background processing |
+| **APScheduler** | ✅ Built-in | Runs automatically inside FastAPI (daily pipeline at midnight) |
+| **Redis** | ❌ Optional | Only when using Celery Beat instead of APScheduler |
+| **Celery Worker** | ❌ Optional | Only for Celery-based scheduling (production alternative) |
 
 ---
 

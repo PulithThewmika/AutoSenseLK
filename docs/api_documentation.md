@@ -15,7 +15,9 @@
 - [Makes & Models](#makes--models)
 - [Search](#search)
 - [Scraper](#scraper)
-  - [Logs](#logs)
+- [Scheduler](#scheduler)
+- [Logs](#logs)
+
 ---
 
 ## Health Check
@@ -333,6 +335,22 @@ Scrape a single brand across all its models and conditions. Runs in background.
 
 ---
 
+### `POST /api/v1/scrape/trigger/pipeline`
+
+Manually trigger the full daily pipeline: **Scrape (with retry) → Snapshot → Retrain**. Each step only runs after the previous one succeeds. Runs in background.
+
+**Response:**
+
+```json
+{
+  "message": "Full daily pipeline started: Scrape → Snapshot → Retrain",
+  "status": "running",
+  "pipeline_steps": ["scrape (retry ×3)", "snapshot", "retrain"]
+}
+```
+
+---
+
 ### `GET /api/v1/scrape/brands`
 
 Return the full list of supported brands and conditions.
@@ -341,7 +359,35 @@ Return the full list of supported brands and conditions.
 
 ### `GET /api/v1/scrape/status`
 
-Return the result of the last scrape run.
+Return the result of the last scrape or pipeline run.
+
+---
+
+## Scheduler
+
+### `GET /api/v1/scrape/schedule`
+
+Return the current scheduler status, pipeline description, and upcoming job times.
+
+**Response:**
+
+```json
+{
+  "scheduler_running": true,
+  "timezone": "Asia/Colombo",
+  "pipeline": "Scrape (retry ×3) → Snapshot → Retrain",
+  "jobs": [
+    {
+      "id": "daily_pipeline_midnight",
+      "name": "Daily Pipeline (Scrape → Snapshot → Retrain)",
+      "next_run": "2026-04-16T00:00:00+05:30",
+      "trigger": "cron[hour='0', minute='0']"
+    }
+  ]
+}
+```
+
+> **See also:** [Scheduler Documentation](scheduler.md) for full pipeline details, retry logic, and architecture.
 
 ---
 
@@ -466,6 +512,8 @@ Stream logs from the backend directly to the client. Real-time updates push `{"m
 | `GET` | `/api/v1/search/` | search | Full-text search |
 | `POST` | `/api/v1/scrape/trigger` | scrape | Trigger full market scrape |
 | `POST` | `/api/v1/scrape/trigger/brand/{brand}` | scrape | Trigger single-brand scrape |
-| `GET` | `/api/v1/scrape/status` | scrape | Last scrape result |
+| `POST` | `/api/v1/scrape/trigger/pipeline` | scrape | Trigger full chained pipeline (Scrape → Snapshot → Retrain) |
+| `GET` | `/api/v1/scrape/status` | scrape | Last scrape/pipeline result |
 | `GET` | `/api/v1/scrape/brands` | scrape | List supported brands |
+| `GET` | `/api/v1/scrape/schedule` | scrape | Scheduler status & next run time |
 | `WS` | `/api/v1/logs/stream` | logs | Stream real-time backend logs via WebSocket |
