@@ -13,9 +13,10 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.core.config import settings
-from app.core.logging import setup_logging
+from app.core.logging import setup_logging, logger
 from app.core.database import init_db
 from app.scraper.seeder import seed_makes_and_models
+from app.tasks.scheduler import start_scheduler, stop_scheduler
 from app.api.v1 import listings, analytics, deals, makes, search
 from app.api.v1 import scrape
 from app.api.v1 import logs
@@ -26,10 +27,14 @@ async def lifespan(app: FastAPI):
     """Startup / shutdown lifecycle — initialise MongoDB on boot."""
     await init_db()
     await seed_makes_and_models()   # upsert brand/model registry into DB
+    start_scheduler()               # ⏰ daily scrape at midnight
+    logger.info("⏰ Scheduled daily scrape cycle at 00:00 Asia/Colombo")
     try:
         yield
     except asyncio.CancelledError:
         pass
+    finally:
+        stop_scheduler()
 
 
 def create_app() -> FastAPI:
