@@ -4,9 +4,12 @@
 
 <br/>
 
-**Comprehensive documentation for the AutoSenseLK platform**
+**Everything you need to understand, set up, and extend AutoSenseLK**
 
-Everything you need to understand, set up, and extend the system.
+<br/>
+
+[![Docs](https://img.shields.io/badge/Status-Up_to_Date-238636?style=for-the-badge&labelColor=0d1117)](.)
+[![Pages](https://img.shields.io/badge/Pages-6_Documents-58a6ff?style=for-the-badge&labelColor=0d1117)](.)
 
 </div>
 
@@ -18,63 +21,62 @@ Everything you need to understand, set up, and extend the system.
 
 ## 📖 Documentation Index
 
+Navigate to the guide you need — each document covers a focused area of the platform.
+
+<br/>
+
 <table>
 <tr>
 <td width="50%" valign="top">
 
-### 🚀 Getting Started
+### 🏠 Getting Started
 
 <br/>
 
-📋 **[Project Overview](project_overview.md)**
-> Full setup guide, prerequisites, environment configuration, and service dependency map. Start here if you're new to the project.
-
-<br/>
-
-🔌 **[API Documentation](api_documentation.md)**
-> All 22 REST endpoints with complete request/response schemas, query parameters, and example payloads. Includes Swagger UI details.
+| Document | Description |
+|:---|:---|
+| 📋 [**Project Overview**](project_overview.md) | Prerequisites, quick start, environment config, and service dependencies |
+| ⚙️ [**Technical Reference**](technical_reference.md) | Full architecture, database schema, scraper pipeline, ML system, and development guide |
 
 </td>
 <td width="50%" valign="top">
 
-### 🏗️ Architecture Deep Dives
+### 🔌 API & Backend
 
 <br/>
 
-⚙️ **[Backend Structure](backend_structure.md)**
-> Module-by-module breakdown of the FastAPI backend — routers, models, scraper pipeline, analytics engine, ML system, and more.
-
-<br/>
-
-🎨 **[Frontend Structure](frontend_structure.md)**
-> React component architecture, API integration layer, Chart.js visualizations, and UI design system.
+| Document | Description |
+|:---|:---|
+| 🔌 [**API Documentation**](api_documentation.md) | All 22 REST endpoints with request/response schemas and examples |
+| 🏗️ [**Backend Structure**](backend_structure.md) | Module-by-module deep dive into the FastAPI backend architecture |
 
 </td>
 </tr>
-</table>
-
-<br/>
-
-<table>
 <tr>
 <td width="50%" valign="top">
 
-### ⏰ Operations
+### 🎨 Frontend & Admin
 
 <br/>
 
-📅 **[Scheduler](scheduler.md)**
-> Daily pipeline orchestration, APScheduler/Celery configuration, retry logic, and cron-based task architecture.
+| Document | Description |
+|:---|:---|
+| 🎨 [**Frontend Structure**](frontend_structure.md) | React component architecture, styling system, and UI integration points |
+| ⏰ [**Scheduler**](scheduler.md) | Daily pipeline automation, retry logic, and task orchestration |
 
 </td>
 <td width="50%" valign="top">
 
-### 🔧 Reference
+### 🗺️ Quick Links
 
 <br/>
 
-🔬 **[Technical Reference](technical_reference.md)**
-> Complete technical specification — architecture diagrams, database schema, scraper details, ML deal scoring, environment variables, and development workflows.
+- 🚀 [Quick Start Guide](project_overview.md#quick-start)
+- 🔑 [Environment Variables](technical_reference.md#environment-variables)
+- 📡 [API Endpoint List](api_documentation.md)
+- 🗄️ [Database Schema](technical_reference.md#database-schema)
+- 🕷️ [Scraper Details](technical_reference.md#scraper)
+- 🤖 [ML Deal Scoring](technical_reference.md#machine-learning--deal-scoring)
 
 </td>
 </tr>
@@ -86,19 +88,25 @@ Everything you need to understand, set up, and extend the system.
 
 <br/>
 
-## 🗺️ Quick Navigation
+## 🏛️ Architecture at a Glance
 
-| I want to... | Go to |
-|:---|:---|
-| Set up the project from scratch | [Project Overview](project_overview.md) |
-| Understand the API endpoints | [API Documentation](api_documentation.md) |
-| Learn how the backend is organized | [Backend Structure](backend_structure.md) |
-| Understand the React frontend | [Frontend Structure](frontend_structure.md) |
-| Configure daily scrape schedules | [Scheduler](scheduler.md) |
-| See the database schema | [Technical Reference](technical_reference.md#database-schema) |
-| Understand the ML deal scoring | [Technical Reference](technical_reference.md#machine-learning--deal-scoring) |
-| View the full architecture diagram | [Technical Reference](technical_reference.md#architecture) |
-| Check environment variables | [Technical Reference](technical_reference.md#environment-variables) |
+```
+   ikman.lk                    AutoSenseLK Platform
+  ┌─────────┐    ┌─────────────────────────────────────────────┐
+  │ 55+ brands│   │                                             │
+  │ 300+ models│──▶│  🕷️ Scraper  ──▶  📊 Analytics  ──▶  🤖 ML  │
+  │ 3 conditions│  │       │                │               │    │
+  └─────────┘    │       ▼                ▼               ▼    │
+                  │  ┌──────────────────────────────────┐       │
+                  │  │          MongoDB                  │       │
+                  │  └──────────────┬───────────────────┘       │
+                  │                 │                            │
+                  │       ┌─────────┴─────────┐                 │
+                  │       ▼                   ▼                 │
+                  │  🔌 REST API        🎨 React Dashboard      │
+                  │  (22 endpoints)     (Charts · Deals · Brands)│
+                  └─────────────────────────────────────────────┘
+```
 
 <br/>
 
@@ -108,6 +116,6 @@ Everything you need to understand, set up, and extend the system.
 
 <div align="center">
 
-**Part of the [AutoSenseLK](../README.md) platform** · Sri Lanka's Vehicle Market Intelligence System
+**Part of the [AutoSenseLK](../README.md) platform** · Sri Lanka's Vehicle Market Intelligence
 
 </div>
