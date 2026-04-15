@@ -1,498 +1,314 @@
 <div align="center">
 
-# AutoSenseLK 🚗
+<!-- Animated Header -->
+<img src="https://capsule-render.vercel.app/api?type=waving&color=0:0D1117,50:1a1b27,100:238636&height=220&section=header&text=AutoSenseLK&fontSize=72&fontColor=58a6ff&fontAlignY=35&desc=Sri%20Lanka's%20Vehicle%20Market%20Intelligence%20Platform&descSize=18&descAlignY=55&descColor=8b949e&animation=fadeIn" width="100%" />
 
-**A data-driven platform for monitoring Sri Lanka's vehicle market**
+<br/>
 
-[![FastAPI](https://img.shields.io/badge/FastAPI-0.115-009688?logo=fastapi)](https://fastapi.tiangolo.com)
-[![MongoDB](https://img.shields.io/badge/MongoDB-6.0+-47A248?logo=mongodb)](https://www.mongodb.com)
-[![React](https://img.shields.io/badge/React-19-61DAFB?logo=react)](https://react.dev)
-[![Python](https://img.shields.io/badge/Python-3.10+-3776AB?logo=python)](https://python.org)
+<p>
+  <img src="https://readme-typing-svg.demolab.com?font=Fira+Code&weight=600&size=22&duration=3000&pause=1000&color=58A6FF&center=true&vCenter=true&multiline=true&repeat=true&width=700&height=80&lines=Real-time+market+data+from+55%2B+brands;AI-powered+deal+scoring+%26+price+predictions;Daily+analytics+across+300%2B+vehicle+models" alt="Typing Animation" />
+</p>
 
-AutoSenseLK automatically scrapes vehicle listings from [ikman.lk](https://ikman.lk), cleans and stores the data, runs daily analytics, and exposes a REST API powering a React dashboard — giving buyers and sellers clear insight into fair market prices, depreciation trends, and deal quality across every major brand and model sold in Sri Lanka.
+<br/>
+
+<!-- Badges Row 1 — Status -->
+[![Live Data](https://img.shields.io/badge/📊_Live_Data-55+_Brands-238636?style=for-the-badge&labelColor=0d1117)](docs/technical_reference.md)
+[![Models Tracked](https://img.shields.io/badge/🚗_Models-300+-58a6ff?style=for-the-badge&labelColor=0d1117)](docs/technical_reference.md)
+[![API Endpoints](https://img.shields.io/badge/🔌_API-22_Endpoints-f78166?style=for-the-badge&labelColor=0d1117)](docs/api_documentation.md)
+[![ML Powered](https://img.shields.io/badge/🤖_ML-Deal_Scoring-a371f7?style=for-the-badge&labelColor=0d1117)](docs/technical_reference.md#machine-learning--deal-scoring)
+
+<br/>
+
+<!-- Badges Row 2 — Tech -->
+![FastAPI](https://img.shields.io/badge/FastAPI-009688?style=flat-square&logo=fastapi&logoColor=white)
+![React](https://img.shields.io/badge/React_19-61DAFB?style=flat-square&logo=react&logoColor=black)
+![MongoDB](https://img.shields.io/badge/MongoDB-47A248?style=flat-square&logo=mongodb&logoColor=white)
+![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?style=flat-square&logo=typescript&logoColor=white)
+![Python](https://img.shields.io/badge/Python_3.10+-3776AB?style=flat-square&logo=python&logoColor=white)
+![scikit-learn](https://img.shields.io/badge/scikit--learn-F7931E?style=flat-square&logo=scikitlearn&logoColor=white)
 
 </div>
 
----
-
-## Table of Contents
-
-- [Features](#features)
-- [Architecture](#architecture)
-- [Tech Stack](#tech-stack)
-- [Project Structure](#project-structure)
-- [Quick Start](#quick-start)
-- [Environment Variables](#environment-variables)
-- [API Overview](#api-overview)
-- [Scraper](#scraper)
-- [Analytics Engine](#analytics-engine)
-- [Machine Learning — Deal Scoring](#machine-learning--deal-scoring)
-- [Database Schema](#database-schema)
-- [Background Tasks](#background-tasks)
-- [Development](#development)
-- [Documentation](#documentation)
-- [License](#license)
+<br/>
 
 ---
 
-## Features
+<br/>
 
-| Feature | Description |
-|---|---|
-| 🕷️ **Model-level scraping** | Crawls ikman.lk brand → model → condition (brand_new / used / reconditioned), covering 11 major brands with 300+ registered models and 44+ additional brands |
-| 📊 **Daily analytics** | Market-wide, per-brand, per-brand×condition, and per-make×model×year×condition snapshots computed daily |
-| 💰 **Deal scoring** | Compares a listing's price against the rolling average for the same make/model and labels it `good_deal`, `fair`, or `overpriced` |
-| 📈 **Price trends** | Month-by-month average price history and year-by-year depreciation curves |
-| 🔍 **Full-text search** | Search listings by any combination of title, make, model, location, or description |
-| 🌐 **React dashboard** | Live charts powered by Chart.js with market summary cards and brand/model filtering |
-| 🚀 **FastAPI REST API** | 22 endpoints with Swagger UI at `/docs` and ReDoc at `/redoc` |
-| 🗄️ **Deduplication** | SHA-256 hash-based dedup prevents duplicate listings from polluting the dataset |
+## 🎯 The Problem
 
----
+> Buying or selling a vehicle in Sri Lanka? **You're flying blind.**
+>
+> Prices vary wildly across listings. There's no reliable benchmark for what a car is *actually* worth. Sellers overprice. Buyers overpay. Nobody knows if they're getting a fair deal.
 
-## Architecture
+<br/>
+
+## 💡 The Solution
+
+**AutoSenseLK** is a market intelligence platform that collects, analyzes, and visualizes real-time vehicle pricing data across Sri Lanka — so you can make decisions backed by data, not guesswork.
+
+<div align="center">
 
 ```
-┌──────────────────────────────────────────────────────────────────┐
-│                         ikman.lk                                  │
-│   55 brands × 300+ models × 3 conditions                         │
-└────────────────────────┬─────────────────────────────────────────┘
-                         │ httpx / Playwright
-                         ▼
-┌──────────────────────────────────────────────────────────────────┐
-│  Scraper Pipeline                                                  │
-│  Spider → Parser → Cleaner → Dedup → Storage → Analytics         │
-└──────────────────────────────────────────────────────┬───────────┘
-                                                        │
-                                                        ▼
-┌──────────────────────────────────────────────────────────────────┐
-│  MongoDB collections                                              │
-│  listings  makes  models  price_snapshots  daily_analytics        │
-│  deal_scores                                                      │
-└────────────────────────┬─────────────────────────────────────────┘
-                         │
-                         ▼
-┌──────────────────────────────────────────────────────────────────┐
-│  FastAPI  (localhost:8000)                                        │
-│  /listings  /analytics  /makes  /deals  /search  /scrape         │
-└────────────────────────┬─────────────────────────────────────────┘
-                         │ HTTP
-                         ▼
-┌──────────────────────────────────────────────────────────────────┐
-│  React Frontend  (localhost:5173)                                 │
-│  Market Dashboard · Brand Explorer · Deal Finder                 │
-└──────────────────────────────────────────────────────────────────┘
+📡 COLLECT          📊 ANALYZE          🎯 DECIDE
+   │                   │                   │
+   ▼                   ▼                   ▼
+Scrape 55+       Daily snapshots      Know if a deal
+brands daily     across 4 levels      is good, fair,
+from ikman.lk    of granularity       or overpriced
 ```
 
-**Optional async layer:**
+</div>
 
-```
-FastAPI ──► Celery Worker ──► Redis
-           (Scrape / Analytics / ML training tasks)
-```
+<br/>
 
 ---
 
-## Tech Stack
+<br/>
 
-### Backend
+## ✨ What AutoSenseLK Does
 
-| Layer | Technology |
-|---|---|
-| API framework | FastAPI 0.115 + Uvicorn |
-| Database | MongoDB 6+ via Motor (async driver) |
-| ODM | Beanie 1.x |
-| Task queue | Celery 5 + Redis |
-| Scraping | httpx + Playwright + BeautifulSoup + lxml |
-| ML | scikit-learn + pandas + NumPy |
-| Auth | python-jose (JWT) + passlib (bcrypt) |
-| Config | pydantic-settings + python-dotenv |
+<table>
+<tr>
+<td width="50%" valign="top">
 
-### Frontend
+### 📊 Market Dashboard
+A beautiful, real-time dashboard showing market health at a glance — total listings, average prices, top brands, and daily trends. Powered by interactive Chart.js visualizations.
 
-| Layer | Technology |
-|---|---|
-| Framework | React 19 + TypeScript |
-| Build tool | Vite 8 |
-| Charts | Chart.js + react-chartjs-2 |
-| Fonts | Google Fonts (Syne, DM Sans, DM Mono) |
-| Linting | ESLint + typescript-eslint |
+### 🔍 Smart Search
+Search across thousands of listings by make, model, year, price range, condition, or location. Find exactly what you're looking for in seconds.
+
+### 💰 Deal Scoring
+Our AI compares every listing against market averages and instantly labels it as a **good deal**, **fair**, or **overpriced** — so you never overpay again.
+
+</td>
+<td width="50%" valign="top">
+
+### 📈 Price Trends
+Track how prices move month by month. See depreciation curves by year. Understand how mileage affects value. Make timing-based buying decisions.
+
+### 🏷️ Brand Intelligence
+Deep analytics for every major brand — Toyota, Honda, Suzuki, BMW, Mercedes-Benz, and 50+ more. See which brands hold value and which depreciate fastest.
+
+### 🔄 Daily Updates
+The platform automatically refreshes its data daily, computing fresh analytics across all brands, models, and conditions at midnight — no manual work needed.
+
+</td>
+</tr>
+</table>
+
+<br/>
 
 ---
 
-## Project Structure
+<br/>
+
+## 🚀 Key Highlights
+
+<div align="center">
+
+| | Feature | Details |
+|:---:|---|---|
+| 🕷️ | **Comprehensive Coverage** | 55+ brands, 300+ models, 3 conditions (new, used, reconditioned) |
+| 📊 | **4-Level Analytics** | Market-wide → Brand → Brand×Condition → Model×Year×Condition |
+| 🤖 | **ML Deal Scoring** | Instant good/fair/overpriced classification per listing |
+| 📈 | **Depreciation Curves** | Year-by-year and mileage-based price decline tracking |
+| 🔌 | **22 REST Endpoints** | Full API with Swagger UI for developers & integrations |
+| 🗄️ | **Smart Deduplication** | SHA-256 hashing prevents data pollution |
+| ⚡ | **Async Architecture** | Non-blocking scraping + async database operations |
+| 🐳 | **Docker Ready** | One command to run the entire stack |
+
+</div>
+
+<br/>
+
+---
+
+<br/>
+
+## 🏗️ How It Works
+
+<div align="center">
 
 ```
-AutoSenseLK/
-├── docs/                              ← Detailed documentation
-│   ├── project_overview.md
-│   ├── api_documentation.md
-│   ├── backend_structure.md
-│   └── frontend_structure.md
-│
-├── vehicle-market-backend/            ← FastAPI application
-│   ├── app/
-│   │   ├── main.py                   ← App factory + startup seeder
-│   │   ├── api/v1/                   ← REST endpoints
-│   │   │   ├── listings.py
-│   │   │   ├── analytics.py
-│   │   │   ├── deals.py
-│   │   │   ├── makes.py
-│   │   │   ├── search.py
-│   │   │   └── scrape.py
-│   │   ├── core/                     ← Config, DB, security, logging
-│   │   ├── models/                   ← Beanie MongoDB documents
-│   │   │   ├── listing.py
-│   │   │   ├── vehicle.py            ← Make & Model
-│   │   │   ├── price_snapshot.py
-│   │   │   ├── daily_analytics.py
-│   │   │   └── deal_score.py
-│   │   ├── schemas/                  ← Pydantic request/response types
-│   │   ├── scraper/
-│   │   │   ├── brands.py             ← 300+ model registry + URL builder
-│   │   │   ├── ikman_spider.py       ← Main spider
-│   │   │   ├── parser.py
-│   │   │   ├── cleaner.py
-│   │   │   ├── deduplicator.py
-│   │   │   ├── playwright_fetch.py
-│   │   │   ├── storage.py
-│   │   │   ├── seeder.py             ← Auto-seeds Make/Model on startup
-│   │   │   └── runner.py
-│   │   ├── analytics/
-│   │   │   ├── daily_snapshot.py     ← 4-level daily analytics engine
-│   │   │   ├── price_trends.py
-│   │   │   ├── depreciation.py
-│   │   │   └── market_summary.py
-│   │   ├── ml/
-│   │   │   ├── scorer.py
-│   │   │   ├── predictor.py
-│   │   │   ├── trainer.py
-│   │   │   ├── features.py
-│   │   │   └── model_store.py
-│   │   └── tasks/                    ← Celery background tasks
-│   ├── models_store/                 ← Trained ML .pkl files
-│   ├── .env.example
-│   └── requirements.txt
-│
-└── vehicle-market-frontend/
-    └── AutoSenseLK/                  ← Vite + React app
-        └── src/
-            ├── LandingPage.tsx       ← Market dashboard
-            ├── App.tsx
-            └── index.css
+                    ┌─────────────────────────┐
+                    │      🌐 ikman.lk         │
+                    │   Sri Lanka's #1 Market   │
+                    └────────────┬──────────────┘
+                                 │
+                         ┌───────▼───────┐
+                         │  🕷️ Scraper   │
+                         │   Pipeline     │
+                         └───────┬───────┘
+                                 │
+              ┌──────────────────┼──────────────────┐
+              │                  │                   │
+        ┌─────▼─────┐    ┌──────▼──────┐    ┌──────▼──────┐
+        │  🧹 Clean  │    │ 🔐 Dedup   │    │ 💾 Store    │
+        │ & Parse    │    │ (SHA-256)   │    │ (MongoDB)   │
+        └─────┬─────┘    └──────┬──────┘    └──────┬──────┘
+              │                  │                   │
+              └──────────────────┼──────────────────┘
+                                 │
+                         ┌───────▼───────┐
+                         │ 📊 Analytics  │
+                         │   Engine      │
+                         └───────┬───────┘
+                                 │
+              ┌──────────────────┼──────────────────┐
+              │                  │                   │
+        ┌─────▼─────┐    ┌──────▼──────┐    ┌──────▼──────┐
+        │  🔌 REST   │    │ 🤖 ML Deal │    │ 📈 React   │
+        │   API      │    │  Scoring    │    │ Dashboard   │
+        └───────────┘    └─────────────┘    └─────────────┘
 ```
 
----
+</div>
 
-## Quick Start
-
-### Prerequisites
-
-| Tool | Version | Required? |
-|---|---|---|
-| Python | 3.10+ | ✅ Yes |
-| Node.js | 18+ | ✅ Yes |
-| MongoDB | 6.0+ | ✅ Yes |
-| Redis | 7.0+ | ❌ Optional (background tasks only) |
+<br/>
 
 ---
 
-### 1 — Backend
+<br/>
+
+## 🏎️ Brands We Track
+
+<div align="center">
+
+| Premium | Japanese | Korean & Others |
+|:---:|:---:|:---:|
+| 🇩🇪 Mercedes-Benz (47 models) | 🇯🇵 Toyota (68 models) | 🇰🇷 Kia (17 models) |
+| 🇩🇪 BMW (50 models) | 🇯🇵 Honda (26 models) | 🇯🇵 Daihatsu (17 models) |
+| 🇩🇪 Audi (13 models) | 🇯🇵 Suzuki (28 models) | 🇯🇵 Mitsubishi (23 models) |
+| 🇬🇧 Land Rover (9 models) | 🇯🇵 Nissan (35 models) | **+ 44 more brands** |
+
+</div>
+
+> **Total**: 55+ brands × 300+ models × 3 conditions = the most comprehensive vehicle market dataset in Sri Lanka.
+
+<br/>
+
+---
+
+<br/>
+
+## 🖥️ Screenshots
+
+<div align="center">
+
+> 🚧 **Coming Soon** — Screenshots of the live dashboard, deal scoring UI, and analytics charts will be added here.
+
+</div>
+
+<br/>
+
+---
+
+<br/>
+
+## 🛠️ Getting Started
+
+Get the full platform running in under 5 minutes.
+
+### Quick Start
 
 ```bash
+# 1. Clone the repository
+git clone https://github.com/PulithThewmika/AutoSenseLK.git
+cd AutoSenseLK
+
+# 2. Start the backend
 cd vehicle-market-backend
-
-# Create & activate virtual environment
-python -m venv venv
-venv\Scripts\activate          # Windows
-# source venv/bin/activate     # macOS / Linux
-
-# Install dependencies
+python -m venv venv && venv\Scripts\activate
 pip install -r requirements.txt
-
-# Install Playwright browser (for JS-heavy pages)
-playwright install chromium
-
-# Configure environment
 cp .env.example .env
-# Edit .env — set MONGODB_URL and any other values
-
-# Start the API server
 uvicorn app.main:app --reload
-```
 
-The server starts at **http://localhost:8000**
-
-On startup it will:
-1. Connect to MongoDB
-2. Seed the `makes` and `models` collections from the brand registry
-
----
-
-### 2 — Frontend
-
-```bash
+# 3. Start the frontend (new terminal)
 cd vehicle-market-frontend/AutoSenseLK
-npm install
-npm run dev
+npm install && npm run dev
 ```
 
-Frontend runs at **http://localhost:5173**
-
----
-
-### 3 — Trigger a scrape
-
-```bash
-# Full market scrape (all brands, all models, all conditions)
-curl -X POST http://localhost:8000/api/v1/scrape/trigger
-
-# Single-brand scrape
-curl -X POST http://localhost:8000/api/v1/scrape/trigger/brand/toyota
-```
-
----
-
-### 4 — Docker (all services)
+### Or use Docker
 
 ```bash
 cd vehicle-market-backend
 docker compose up --build
 ```
 
----
+> 📖 **Full setup guide**: [docs/project_overview.md](docs/project_overview.md) — includes environment variables, prerequisites, and service dependencies.
 
-## Environment Variables
-
-Create `vehicle-market-backend/.env` from `.env.example`:
-
-| Variable | Default | Description |
-|---|---|---|
-| `MONGODB_URL` | `mongodb://localhost:27017` | MongoDB connection string |
-| `MONGODB_DB_NAME` | `vehicle_market` | Database name |
-| `REDIS_URL` | `redis://localhost:6379/0` | Redis URL (Celery broker) |
-| `API_KEY` | *(empty)* | API key for protected endpoints |
-| `JWT_SECRET` | `change-me` | JWT signing secret |
-| `JWT_ALGORITHM` | `HS256` | JWT algorithm |
-| `SCRAPE_BASE_URL` | `https://ikman.lk` | Scrape target |
-| `SCRAPE_MAX_PAGES_PER_BRAND` | `3` | Pages crawled per brand×model×condition |
-| `SCRAPE_DELAY` | `1.5` | Seconds between requests |
-| `DEBUG` | `False` | Enable debug mode |
+<br/>
 
 ---
 
-## API Overview
+<br/>
 
-Interactive docs: **http://localhost:8000/docs**
+## 📖 Documentation
 
-| Method | Endpoint | Description |
-|---|---|---|
-| `GET` | `/health` | Health check |
-| `GET` | `/api/v1/listings/` | Paginated listings (filter by make, model, price, year) |
-| `GET` | `/api/v1/listings/{id}` | Single listing detail |
-| `GET` | `/api/v1/analytics/avg-price` | Average price by make/model |
-| `GET` | `/api/v1/analytics/trends` | Monthly price trends |
-| `GET` | `/api/v1/analytics/summary` | Market-wide statistics |
-| `GET` | `/api/v1/analytics/depreciation` | Price depreciation curve |
-| `GET` | `/api/v1/analytics/mileage` | Price vs mileage curve |
-| `GET` | `/api/v1/analytics/daily` | Latest market snapshot |
-| `GET` | `/api/v1/analytics/daily/brands` | Latest snapshot for all brands |
-| `GET` | `/api/v1/analytics/daily/brand/{brand}` | Brand snapshot with condition breakdown |
-| `GET` | `/api/v1/analytics/daily/history` | Historical daily snapshots |
-| `GET` | `/api/v1/deals/score` | Deal quality score for a listing |
-| `GET` | `/api/v1/makes/` | All makes with scrape URLs |
-| `GET` | `/api/v1/makes/{name}/models` | Models for a make with listing counts |
-| `GET` | `/api/v1/makes/{make}/models/{model}/years` | Year-by-year price history |
-| `GET` | `/api/v1/search/` | Full-text listing search |
-| `POST` | `/api/v1/scrape/trigger` | Trigger full market scrape |
-| `POST` | `/api/v1/scrape/trigger/brand/{brand}` | Trigger single-brand scrape |
-| `GET` | `/api/v1/scrape/status` | Last scrape result |
-| `GET` | `/api/v1/scrape/brands` | Supported brands list |
+<div align="center">
 
-> Full request/response schemas: [`docs/api_documentation.md`](docs/api_documentation.md)
+| Document | What's Inside |
+|:---|:---|
+| 📋 [**Project Overview**](docs/project_overview.md) | Full setup guide, prerequisites, environment config |
+| 🔌 [**API Documentation**](docs/api_documentation.md) | All 22 endpoints with request/response examples |
+| ⚙️ [**Technical Reference**](docs/technical_reference.md) | Architecture, database schema, scraper pipeline, ML system |
+| 🏗️ [**Backend Structure**](docs/backend_structure.md) | Module-by-module backend deep dive |
+| 🎨 [**Frontend Structure**](docs/frontend_structure.md) | React components, API integration, UI architecture |
+| ⏰ [**Scheduler**](docs/scheduler.md) | Daily pipeline, retry logic, task orchestration |
+
+</div>
+
+<br/>
 
 ---
 
-## Scraper
+<br/>
 
-The scraper follows a **brand → model → condition** crawl strategy using model-specific ikman.lk URLs:
+## 🗺️ Roadmap
 
-```
-https://ikman.lk/en/ads/sri-lanka/cars/{brand}/{model}?tree.brand={brand}_{brand}-{model}&enum.condition={condition}
-```
+- [x] Multi-brand scraping with model-level granularity
+- [x] 4-level daily analytics engine
+- [x] ML-powered deal scoring
+- [x] Interactive React dashboard with Chart.js
+- [x] Full REST API with 22 endpoints
+- [x] Docker deployment
+- [ ] Price alert notifications
+- [ ] Mobile-responsive PWA
+- [ ] Historical price comparison tool
+- [ ] WhatsApp/Telegram bot integration
+- [ ] Dealer reputation scoring
 
-### Supported brands with model-level crawling
-
-| Brand | Models |
-|---|---|
-| Toyota | 68 models (Aqua, Prius, Vezel, Axio, Hilux…) |
-| Honda | 26 models (Vezel, CRV, Fit, Civic, City…) |
-| Suzuki | 28 models (Alto, Wagon R, Swift, Spacia…) |
-| Nissan | 35 models (Sunny, X-Trail, March, Leaf…) |
-| Mercedes-Benz | 47 models (C200, E200, GLB, G Wagon…) |
-| Mitsubishi | 23 models (Lancer, Montero, Outlander…) |
-| Land Rover | 9 models (Defender, Range Rover, Discovery…) |
-| Daihatsu | 17 models (Mira, Rocky, Taft, Boon…) |
-| Audi | 13 models (A3, Q3, Q5, A4, e-tron…) |
-| BMW | 50 models (X1, X3, X5, 318i, i3…) |
-| Kia | 17 models (Sonet, Sorento, Sportage…) |
-
-An additional 44 brands (Micro, DFS, Hyundai, Ford, etc.) are scraped at brand level.
-
-### Pipeline
-
-```
-Crawl → Parse → Clean → Deduplicate → Store → Analyse
-```
-
-1. **Crawl** — fetches listing pages (httpx, falls back to Playwright for JS-rendered content)
-2. **Parse** — extracts title, price, mileage, location from index cards; `make`, `model`, `condition` are injected from URL context
-3. **Clean** — normalises price (`"Rs 7,800,000"` → `7800000.0`), mileage (miles → km), year
-4. **Deduplicate** — SHA-256 hash of `source_url + title + price` prevents re-inserting existing listings
-5. **Store** — upserts into `listings` collection
-6. **Analyse** — triggers `compute_and_save_daily_analytics()` after every cycle
+<br/>
 
 ---
 
-## Analytics Engine
+<br/>
 
-### 4-level daily aggregation
+<div align="center">
 
-Every scrape cycle computes analytics at four levels of granularity:
+## 🤝 Contributing
 
-| Level | Documents/day | Key use |
-|---|---|---|
-| Market-wide | 1 | Overall market health |
-| Per-brand | ~55 | Brand comparison |
-| Per-brand × condition | ~165 | New vs used vs reconditioned |
-| Per-make × model × year × condition | Thousands | Clean depreciation tracking via `PriceSnapshot` |
+AutoSenseLK is currently a private project. If you're interested in contributing or have feedback, feel free to open an issue.
 
-### Key functions
+<br/>
 
-- `compute_and_save_daily_analytics()` — full 4-level engine
-- `model_year_price_history(make, model, condition)` — queries `PriceSnapshot` aggregates for year-by-year pricing without recalculating from raw listings
-- `depreciation_curve(make, model)` — price vs manufacturing year
-- `mileage_curve(make, model)` — price vs mileage in 25k km buckets
-- `monthly_avg_price(make, model, months)` — month-by-month trend
+## 📄 License
+
+All rights reserved.
+
+<br/>
 
 ---
 
-## Machine Learning — Deal Scoring
+<br/>
 
-The deal scorer compares a listing's asking price against the average price for the same make and model:
+<img src="https://capsule-render.vercel.app/api?type=waving&color=0:0D1117,50:1a1b27,100:238636&height=120&section=footer" width="100%" />
 
-| Label | Ratio (actual ÷ predicted) | Meaning |
-|---|---|---|
-| `good_deal` | < 0.85 | Listed >15% below market average |
-| `fair` | 0.85 – 1.15 | Within ±15% of market |
-| `overpriced` | > 1.15 | Listed >15% above market average |
+<br/>
 
-Access via `GET /api/v1/deals/score?listing_id={id}`
+**Built with ❤️ for Sri Lanka's vehicle market**
 
-> A full regression model (scikit-learn) is scaffolded in `app/ml/` for future training on richer feature sets.
+<sub>Automating market intelligence so you never overpay for a vehicle again.</sub>
 
----
-
-## Database Schema
-
-### `listings`
-
-| Field | Type | Description |
-|---|---|---|
-| `make` | string | Vehicle make (e.g. "Toyota") |
-| `model` | string | Vehicle model (e.g. "Aqua") |
-| `condition` | string | `used` / `brand_new` / `reconditioned` |
-| `price` | float | Price in LKR |
-| `year` | int | Manufacturing year |
-| `mileage` | float | Mileage in km |
-| `location` | string | Sri Lankan district |
-| `source_url` | string | Original ikman.lk URL |
-| `source_hash` | string | SHA-256 dedup key |
-
-**Indexes**: `source_hash` (unique), `[make, model, year, condition]` (analytics)
-
-### `makes` / `models`
-
-Both documents store `name`, `slug`, and `scrape_url`. Seeded automatically on server startup from the brand registry.
-
-### `price_snapshots`
-
-Daily aggregate per `make × model × year × condition` group. Stores `avg_price`, `min_price`, `max_price`, `listing_count`.
-
-### `daily_analytics`
-
-Daily aggregate at market / brand / brand×condition scope. Stores `avg_price`, `min_price`, `max_price`, `median_price`, `total_listings`, `price_change_pct`.
-
----
-
-## Background Tasks
-
-Tasks run via **Celery** with **Redis** as the broker:
-
-```bash
-# Start the Celery worker
-celery -A app.tasks.celery_app worker --loglevel=info
-```
-
-| Task name | Trigger | What it does |
-|---|---|---|
-| `scrape_listings` | Manual / scheduled | Full market scrape cycle |
-| `snapshot_prices` | Post-scrape / scheduled | Runs `compute_and_save_daily_analytics()` |
-| `retrain_model` | Manual / scheduled | Retrains the ML pricing model |
-
-> Redis is **optional** for development. Scrape and analytics can be triggered directly via `POST /api/v1/scrape/trigger` without a Celery worker.
-
----
-
-## Development
-
-### Running tests
-
-```bash
-cd vehicle-market-backend
-pytest tests/ -v
-```
-
-### Verifying imports
-
-```bash
-python -c "import app.main; print('OK')"
-```
-
-### Useful endpoints during development
-
-```bash
-# Check health
-curl http://localhost:8000/health
-
-# Trigger model-level scrape for Toyota
-curl -X POST http://localhost:8000/api/v1/scrape/trigger/brand/toyota
-
-# Check scrape result
-curl http://localhost:8000/api/v1/scrape/status
-
-# Get Toyota Aqua average price
-curl "http://localhost:8000/api/v1/analytics/avg-price?make=Toyota&model=Aqua"
-
-# Year-by-year Aqua price history
-curl "http://localhost:8000/api/v1/makes/toyota/models/aqua/years"
-```
-
----
-
-## Documentation
-
-| Document | Description |
-|---|---|
-| [`docs/project_overview.md`](docs/project_overview.md) | Full tech stack, quick start, env vars, service dependencies |
-| [`docs/api_documentation.md`](docs/api_documentation.md) | All 22 endpoints with request/response schemas |
-| [`docs/backend_structure.md`](docs/backend_structure.md) | Module-by-module backend architecture |
-| [`docs/frontend_structure.md`](docs/frontend_structure.md) | React component structure and API integration |
-
-Interactive API explorer available at **http://localhost:8000/docs** when the server is running.
-
----
-
-## License
-
-Private — All rights reserved.
+</div>
