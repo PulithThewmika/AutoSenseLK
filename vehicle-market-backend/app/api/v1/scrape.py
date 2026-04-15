@@ -86,3 +86,24 @@ async def list_available_brands():
         "total_brands": len(BRANDS),
         "conditions": CONDITIONS,
     }
+
+
+@router.get("/schedule")
+async def scrape_schedule():
+    """Return the current scheduler status and upcoming job times."""
+    from app.tasks.scheduler import scheduler
+
+    jobs = []
+    for job in scheduler.get_jobs():
+        jobs.append({
+            "id": job.id,
+            "name": job.name,
+            "next_run": job.next_run_time.isoformat() if job.next_run_time else None,
+            "trigger": str(job.trigger),
+        })
+
+    return {
+        "scheduler_running": scheduler.running,
+        "timezone": "Asia/Colombo",
+        "jobs": jobs,
+    }
