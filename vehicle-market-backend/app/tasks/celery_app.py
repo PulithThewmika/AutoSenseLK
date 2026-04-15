@@ -1,10 +1,8 @@
 """
 Celery application instance with Redis broker and Beat schedule.
 
-Beat schedule triggers:
-  - scrape_listings   → every day at 00:00 (midnight) Asia/Colombo
-  - snapshot_prices   → every day at 05:00 Asia/Colombo
-  - retrain_model     → every day at 06:00 Asia/Colombo
+Beat schedule triggers a single chained pipeline task at midnight:
+  daily_pipeline → Scrape (with retry) → Snapshot → Retrain
 
 To start the Beat scheduler alongside the worker:
   celery -A app.tasks.celery_app beat --loglevel=info
@@ -30,19 +28,11 @@ celery_app.conf.update(
     enable_utc=True,
 )
 
-# ── Celery Beat — periodic task schedule ─────────────
+# ── Celery Beat — single chained pipeline at midnight ─
 celery_app.conf.beat_schedule = {
-    "daily-scrape-midnight": {
-        "task": "scrape_listings",
+    "daily-pipeline-midnight": {
+        "task": "daily_pipeline",
         "schedule": crontab(hour=0, minute=0),   # every day at 00:00
         "options": {"queue": "default"},
-    },
-    "daily-snapshot-5am": {
-        "task": "snapshot_prices",
-        "schedule": crontab(hour=5, minute=0),    # every day at 05:00
-    },
-    "daily-retrain-6am": {
-        "task": "retrain_model",
-        "schedule": crontab(hour=6, minute=0),    # every day at 06:00
     },
 }
