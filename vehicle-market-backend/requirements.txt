@@ -10,7 +10,7 @@ beanie==1.*
 
 # ── Background Tasks / Scheduling ───────────────────
 celery==5.*
-redis==5.*
+redis==7.*
 APScheduler==3.*
 
 # ── Scraping ─────────────────────────────────────────
