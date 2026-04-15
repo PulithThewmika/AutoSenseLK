@@ -21,7 +21,7 @@ vehicle-market-backend/
 │   │       ├── deals.py        ← GET /deals/score
 │   │       ├── makes.py        ← GET /makes, /makes/{name}/models, /{make}/models/{model}/years
 │   │       ├── search.py       ← GET /search
-│   │       ├── scrape.py       ← POST /scrape/trigger, /trigger/brand/{b}, GET /status, /brands
+│   │       ├── scrape.py       ← POST /scrape/trigger, /trigger/brand/{b}, /trigger/pipeline, GET /status, /brands, /schedule
 │   │       └── logs.py         ← WS /logs/stream
 │   ├── core/
 │   │   ├── config.py           ← Settings via pydantic-settings (.env)
@@ -60,8 +60,9 @@ vehicle-market-backend/
 │   │   ├── depreciation.py     ← Price vs age/mileage curves
 │   │   └── daily_snapshot.py   ← Daily analytics engine (4 levels)
 │   └── tasks/
-│       ├── celery_app.py       ← Celery instance (Redis broker)
-│       ├── scrape_task.py      ← Background scrape task
+│       ├── celery_app.py       ← Celery instance (Redis broker) + Beat schedule
+│       ├── scheduler.py        ← APScheduler in-process daily pipeline (Scrape → Snapshot → Retrain)
+│       ├── scrape_task.py      ← Celery chained pipeline task (with retry)
 │       ├── train_task.py       ← Background ML training task
 │       └── snapshot_task.py    ← Daily analytics Celery task
 ├── models_store/               ← Trained model files (.pkl)
@@ -81,7 +82,7 @@ vehicle-market-backend/
 - Configures CORS middleware (allows all origins in dev)
 - Mounts all v1 routers under `/api/v1`
 - Registers a `/health` endpoint
-- **Lifespan**: initialises MongoDB, then runs `seed_makes_and_models()` to populate Make/Model collections
+- **Lifespan**: initialises MongoDB, seeds Make/Model collections, starts APScheduler daily pipeline, and shuts down the scheduler on exit
 
 ### `app/core/` — Core Infrastructure
 
@@ -207,9 +208,25 @@ For brands WITHOUT model data (3 brands):
 
 ---
 
-### `app/tasks/` — Celery Background Tasks
+### `app/tasks/` — Scheduling & Background Tasks
 
-Requires **Redis** as message broker.
+Supports two scheduling engines:
+
+#### `scheduler.py` — APScheduler (In-Process, Default)
+- Runs inside the FastAPI process — **no extra services needed**
+- **Daily pipeline** triggered at midnight: Scrape (with retry ×3) → Snapshot → Retrain
+- Each step only runs after the previous one succeeds
+- Scrape retries up to 3 times with 5-minute delays between attempts
+- Started/stopped automatically via `main.py` lifespan
+
+#### `celery_app.py` — Celery Beat (Production Alternative)
+- Requires **Redis** as message broker + separate Beat/Worker processes
+- Single `daily_pipeline` task scheduled at `crontab(hour=0, minute=0)`
+- Task name: `daily_pipeline` (chained: scrape → snapshot → retrain)
+
+#### `scrape_task.py`
+- **Task name**: `daily_pipeline` — Celery chained pipeline with built-in retry
+- Also exports standalone `scrape_listings` task for manual triggers
 
 #### `snapshot_task.py`
 - **Task name**: `snapshot_prices`
@@ -218,8 +235,14 @@ Requires **Redis** as message broker.
 **Running the Celery worker:**
 
 ```bash
+# Terminal 1: Scheduler
+celery -A app.tasks.celery_app beat --loglevel=info
+
+# Terminal 2: Worker
 celery -A app.tasks.celery_app worker --loglevel=info
 ```
+
+> **See also:** [Scheduler Documentation](scheduler.md) for full pipeline details, retry logic, and architecture.
 
 ---
 
@@ -259,11 +282,12 @@ celery -A app.tasks.celery_app worker --loglevel=info
 
 | Module | Status | Notes |
 |---|---|---|
-| API Routes | ✅ Complete | All 22 endpoints connected to MongoDB |
+| API Routes | ✅ Complete | All 24 endpoints connected to MongoDB |
 | Models | ✅ Complete | 6 Beanie documents with compound indexes |
 | Schemas | ✅ Complete | Pydantic schemas match current models |
 | Scraper | ✅ Functional | Model-level crawling for 53 brands, brand-level for 3 |
 | Analytics | ✅ Functional | 4-level daily snapshots, depreciation, mileage curves |
 | ML | 🔧 Scaffolded | Scorer logic complete, trainer/predictor need implementation |
-| Tasks | ✅ Functional | Daily analytics via Celery, require Redis |
+| Scheduler | ✅ Functional | Daily chained pipeline (Scrape→Snapshot→Retrain) with retry |
+| Tasks | ✅ Functional | APScheduler (default) + Celery Beat (optional) |
 | Security | 🔧 Scaffolded | JWT & API key helpers stubbed |
