@@ -105,5 +105,32 @@ async def scrape_schedule():
     return {
         "scheduler_running": scheduler.running,
         "timezone": "Asia/Colombo",
+        "pipeline": "Scrape (retry ×3) → Snapshot → Retrain",
         "jobs": jobs,
+    }
+
+
+@router.post("/trigger/pipeline")
+async def trigger_pipeline(background_tasks: BackgroundTasks):
+    """
+    Manually trigger the full daily pipeline:
+      Scrape (with retry) → Snapshot → Retrain
+
+    Each step only runs after the previous one succeeds.
+    Returns immediately with an acknowledgement.
+    """
+    from app.tasks.scheduler import daily_pipeline
+
+    global _last_result
+    _last_result = {"status": "running", "type": "full_pipeline"}
+
+    async def _run_pipeline():
+        global _last_result
+        _last_result = await daily_pipeline()
+
+    background_tasks.add_task(_run_pipeline)
+    return {
+        "message": "Full daily pipeline started: Scrape → Snapshot → Retrain",
+        "status": "running",
+        "pipeline_steps": ["scrape (retry ×3)", "snapshot", "retrain"],
     }
