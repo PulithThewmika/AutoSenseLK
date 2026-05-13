@@ -300,7 +300,6 @@ All rights reserved.
 <br/>
 
 ---
-
 <br/>
 
 <img src="https://capsule-render.vercel.app/api?type=waving&color=0:0D1117,50:1a1b27,100:238636&height=120&section=footer" width="100%" />
