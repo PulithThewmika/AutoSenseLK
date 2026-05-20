@@ -158,8 +158,8 @@ The platform automatically refreshes its data daily, computing fresh analytics a
               ┌──────────────────┼──────────────────┐
               │                  │                   │
         ┌─────▼─────┐    ┌──────▼──────┐    ┌──────▼──────┐
-        │  🔌 REST   │    │ 🤖 ML Deal │    │ 📈 React   │
-        │   API      │    │  Scoring    │    │ Dashboard   │
+        │  🔌 REST │     │ 🤖 ML Deal │    │ 📈 React   │
+        │   API     │    │  Scoring    │    │ Dashboard   │
         └───────────┘    └─────────────┘    └─────────────┘
 ```
 
