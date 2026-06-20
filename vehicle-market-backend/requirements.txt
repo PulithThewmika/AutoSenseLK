@@ -6,7 +6,7 @@ pydantic-settings==2.*
 
 # ── Database (MongoDB) ──────────────────────────────
 motor==3.*
-beanie==1.*
+beanie==2.*
 
 # ── Background Tasks / Scheduling ───────────────────
 celery==5.*
