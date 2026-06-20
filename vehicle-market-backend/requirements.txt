@@ -17,7 +17,7 @@ APScheduler==3.*
 scrapy==2.*
 playwright==1.*
 beautifulsoup4==4.*
-lxml==5.*
+lxml==6.*
 
 # ── ML ───────────────────────────────────────────────
 scikit-learn==1.*
